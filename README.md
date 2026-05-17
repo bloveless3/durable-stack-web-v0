@@ -1,1 +1,46 @@
-# durable-stack-web-v0
+# DurableStack Platform (Web v0)
+
+Initial solution scaffolding for hosted DurableStack platform services.
+
+## Projects
+
+- `src/DurableStack.Api` - ingestion and tenant-facing API (`api.durablestack.com`)
+- `src/DurableStack.App` - customer portal (`app.durablestack.com`)
+- `src/DurableStack.Marketing` - marketing/docs site (`durablestack.com`)
+- `src/DurableStack.ControlPlane` - EF Core model + DbContext for control-plane data
+- `src/DurableStack.Telemetry` - EF Core model + DbContext for telemetry data
+- `src/DurableStack.Platform.Contracts` - shared DTO contracts
+
+## Database strategy
+
+- PostgreSQL with two databases:
+  - `durablestack_control` (auth/org/project/tenant/billing/alerts config)
+  - `durablestack_telemetry` (raw events, ingestion batches, reporting aggregates)
+- Both are accessed with Entity Framework Core + Npgsql.
+
+## Current status
+
+- Solution scaffolded and builds successfully on .NET 9.
+- Control-plane model now includes user/team hierarchy:
+  - `User` = human account
+  - `Organization` = team/company
+  - `OrganizationMember` = user membership/role in organization
+  - `Project` = logical application under organization
+  - `Tenant` = project environment credential target (currently includes `EnvironmentName`)
+- API foundation in place with:
+  - health/version endpoints
+  - local tenant bootstrap endpoint for development
+  - authenticated telemetry ingestion (`POST /v1/events/batch`)
+  - idempotency key support on ingestion
+  - tenant policy enforcement at ingestion (batch limits, sync enabled/disabled, error detail redaction)
+  - initial reporting summary endpoint for app integration (`GET /v1/reports/summary`)
+- EF Core initial migrations generated for both DbContexts:
+  - `src/DurableStack.ControlPlane/Migrations/ControlPlane`
+  - `src/DurableStack.Telemetry/Migrations/Telemetry`
+- App foundation includes typed API client and a basic dashboard check wired to API summary.
+- Tenant options are currently treated as ingestion-time server policy only; workers do not fetch runtime options.
+
+## Notes
+
+- `NuGet.Config` is committed to use `nuget.org` package source in this repo.
+- API and App `appsettings.json` include starter local connection strings.
