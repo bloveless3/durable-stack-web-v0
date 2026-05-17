@@ -1,0 +1,834 @@
+# DurableStack Hosted Platform Build Plan
+
+## Overall Platform Goal
+
+DurableStack should launch as:
+
+> A free OSS durable job runner for .NET developers, with optional hosted observability for teams that want centralized reporting, alerts, retention, and operational visibility.
+
+Recommended initial architecture:
+
+* `durablestack.com` — marketing, docs, pricing, SEO
+* `api.durablestack.com` — telemetry ingestion and tenant configuration API
+* `app.durablestack.com` — customer portal, reports, billing, alerts, team management
+
+Initial database recommendation:
+
+* Postgres for all three sites
+* Separate Postgres database for API telemetry/reporting
+* Separate Postgres database for app/auth/billing/customer data
+* No Kafka, MongoDB, ClickHouse, or external event bus for MVP
+* Design ingestion behind an abstraction so a queue/event pipeline can be added later
+
+---
+
+# 1. `durablestack.com` Build Plan
+
+## Purpose
+
+`durablestack.com` is the public face of DurableStack.
+
+It should explain the product, help developers understand the value, provide documentation, and push adoption of the NuGet packages.
+
+This site does not contain account-specific features.
+
+## Fit in Overall Plan
+
+This is the acquisition layer.
+
+Its job is to convert visitors into:
+
+* NuGet users
+* GitHub stars
+* documentation readers
+* registered hosted-observability users
+* future paying customers
+
+## Success Criteria
+
+The site succeeds if developers quickly understand:
+
+* what DurableStack is
+* why they would use it instead of Hangfire, Quartz, custom cron jobs, or hosted queues
+* how to install it
+* how to run their first job
+* how optional hosted observability works
+* what is free vs paid
+
+## Recommended Stack
+
+* .NET 9
+* ASP.NET Core Razor Pages or MVC
+* Markdown-based docs
+* Postgres optional, only if needed for blog/newsletter/contact forms
+* Static-first deployment where possible
+* Simple admin publishing workflow later
+
+## Core Pages
+
+* Home
+* Docs
+* Getting Started
+* Providers
+* Pricing
+* Hosted Observability
+* Compare to Hangfire
+* Compare to Quartz
+* GitHub link
+* NuGet package links
+* Changelog
+* Blog/articles
+
+## Positioning Message
+
+Primary message:
+
+> Durable background and scheduled jobs using your existing database, with optional hosted observability.
+
+Secondary message:
+
+> No Redis. No queue server. No separate job infrastructure required.
+
+## Phase 1 — Marketing Shell
+
+Goal: launch a credible public website.
+
+Deliverables:
+
+* Home page
+* Product positioning
+* Hero CTA to docs/install
+* GitHub CTA
+* NuGet CTA
+* Basic pricing page
+* Hosted observability teaser
+* Footer with docs, GitHub, contact, privacy, terms
+
+Build task:
+
+* Create `DurableStack.Web` or `DurableStack.Marketing`
+* Implement public layout
+* Add simple content pages
+* Add metadata for SEO/social sharing
+
+## Phase 2 — Documentation System
+
+Goal: make DurableStack easy to adopt.
+
+Deliverables:
+
+* Markdown docs rendering
+* Getting Started guide
+* Provider setup docs
+* Hosted sync docs
+* Timezone docs
+* Reliability model docs
+* Events docs
+* Code syntax highlighting
+
+Build task:
+
+* Store docs as markdown files in repo
+* Render through ASP.NET
+* Add sidebar navigation
+* Add previous/next doc links
+
+## Phase 3 — Developer Conversion
+
+Goal: turn interest into usage.
+
+Deliverables:
+
+* “Install with NuGet” blocks
+* Copyable code snippets
+* Sample app links
+* “Run your first job” walkthrough
+* Provider-specific setup guides
+* Free hosted observability signup CTA
+
+Build task:
+
+* Add reusable code block component
+* Add provider cards
+* Add example project links
+
+## Phase 4 — SEO and Comparison Content
+
+Goal: capture search demand.
+
+Deliverables:
+
+* Blog/articles section
+* Comparison pages
+* Use-case pages:
+
+  * ASP.NET background jobs
+  * Kubernetes scheduled jobs
+  * recurring jobs in .NET
+  * database-backed job queue
+  * cron alternative for .NET
+
+Build task:
+
+* Add article template
+* Add metadata fields
+* Add sitemap
+* Add robots.txt
+* Add canonical URLs
+
+## Phase 5 — Trust and Launch Polish
+
+Goal: make the project feel real.
+
+Deliverables:
+
+* GitHub badge area
+* NuGet package links
+* Changelog
+* Roadmap
+* Security/privacy explanation
+* Hosted sync data policy
+* Error stack opt-in explanation
+
+Build task:
+
+* Add changelog page
+* Add roadmap page
+* Add privacy/security page
+
+## MVP Exclusions
+
+Do not include:
+
+* customer login
+* dashboards
+* billing
+* tenant management
+* account-specific docs
+* complex CMS
+
+---
+
+# 2. `api.durablestack.com` Build Plan
+
+## Purpose
+
+`api.durablestack.com` receives telemetry from DurableStack installations and applies tenant ingestion policies server-side.
+
+It is the ingestion and sync backbone of the hosted platform.
+
+## Fit in Overall Plan
+
+This is the most important backend service.
+
+The OSS package runs locally. The API receives optional telemetry when a tenant ID and client secret are configured.
+
+Local job execution must never depend on this API being available.
+
+## Success Criteria
+
+The API succeeds if:
+
+* SDKs can authenticate securely
+* events can be batched and submitted reliably
+* ingestion is fast and cheap
+* failed API calls do not break customer jobs
+* raw events are retained according to plan
+* reporting aggregates are generated efficiently
+* free and paid retention rules are enforceable
+* alerts can be triggered from failures and other configured events
+
+## Recommended Stack
+
+* .NET 9
+* ASP.NET Core Minimal APIs
+* Postgres
+* Npgsql
+* Background services
+* API key/client-secret authentication
+* Batched inserts
+* In-process channel queue for MVP
+* Queue-ready abstraction for future scaling
+
+## Core Principle
+
+Do not make the ingestion endpoint do expensive work.
+
+Recommended ingestion flow:
+
+1. Receive batch.
+2. Authenticate tenant.
+3. Validate schema/version.
+4. Add accepted batch to internal channel.
+5. Return quickly.
+6. Background writer persists raw events.
+7. Background aggregator updates reporting tables.
+8. Background alert processor evaluates alert rules.
+
+## Phase 1 — API Foundation
+
+Goal: create a secure minimal ingestion API.
+
+Deliverables:
+
+* ASP.NET Core Minimal API project
+* Health check endpoint
+* Version endpoint
+* Tenant credential validation
+* Request signing or client-secret auth
+* Basic rate limiting
+* Structured logging
+
+Build task:
+
+* Create `DurableStack.Api`
+* Add config, logging, health checks
+* Add Postgres connection
+* Add tenant auth middleware/service
+
+## Phase 2 — Telemetry Batch Ingestion
+
+Goal: accept bundled SDK telemetry.
+
+Deliverables:
+
+* `POST /v1/events/batch`
+* Batch request schema
+* Event validation
+* Tenant/environment/service validation
+* Event version handling
+* Response with accepted/rejected counts
+* Idempotency key support
+
+Build task:
+
+* Define DTOs:
+
+  * `TelemetryBatchRequest`
+  * `TelemetryEventDto`
+  * `TelemetryBatchResponse`
+* Add validation
+* Add bulk insert path
+
+## Phase 3 — Local Buffer Friendly Contract
+
+Goal: support safe SDK retry behavior.
+
+Deliverables:
+
+* stable response codes
+* retryable vs non-retryable error distinction
+* max batch size
+* max payload size
+* server clock timestamp
+* accepted event IDs
+
+Build task:
+
+* Document API retry behavior
+* Return clear error responses
+* Add `413 Payload Too Large`
+* Add `429 Too Many Requests`
+* Add `401/403` auth handling
+
+## Phase 4 — Raw Event Storage
+
+Goal: persist immutable telemetry facts.
+
+Recommended tables:
+
+* `tenants`
+* `tenant_credentials`
+* `telemetry_batches`
+* `telemetry_events`
+* `worker_heartbeats`
+* `ingestion_errors`
+
+Raw event table fields:
+
+* `id`
+* `tenant_id`
+* `project_id`
+* `environment_id`
+* `event_id`
+* `event_type`
+* `event_version`
+* `occurred_at_utc`
+* `received_at_utc`
+* `job_name`
+* `run_id`
+* `attempt`
+* `worker_name`
+* `duration_ms`
+* `retry_at_utc`
+* `error_type`
+* `error_message`
+* `error_detail`
+* `trace_id`
+* `span_id`
+* `payload_json`
+
+Important:
+
+* store `error_detail` only when tenant settings allow detailed error sync
+* otherwise discard/redact it at ingestion
+
+## Phase 5 — Aggregation Tables
+
+Goal: make reporting fast and cheap.
+
+Recommended tables:
+
+* `job_run_facts`
+* `job_hourly_stats`
+* `job_daily_stats`
+* `tenant_daily_stats`
+* `worker_status_snapshots`
+* `failure_summaries`
+* `retry_summaries`
+
+Build task:
+
+* Create background aggregation worker
+* Aggregate by:
+
+  * tenant
+  * project
+  * environment
+  * job name
+  * hour/day
+* Store:
+
+  * run count
+  * success count
+  * failure count
+  * retry count
+  * average duration
+  * p95 duration if feasible
+  * last success
+  * last failure
+  * latest worker heartbeat
+
+## Phase 6 — Tenant Ingestion Policy Enforcement
+
+Goal: enforce tenant sync settings at ingestion without requiring SDK option polling.
+
+Deliverables:
+
+* server-side enabled/disabled sync categories
+* server-side max batch size and payload limits
+* error detail opt-in enforcement at ingestion
+* sampling/retention policy hooks in ingestion pipeline
+* plan-limit enforcement in API layer
+
+Build task:
+
+* enforce tenant settings during batch validation and write path
+* redact/discard restricted fields based on tenant policy
+* document API behavior so SDK can remain payload-stable
+
+## Phase 7 — Alerts Engine
+
+Goal: support paid-tier alerting.
+
+Deliverables:
+
+* email alert queue
+* webhook alert queue
+* alert rules table
+* alert delivery attempts
+* alert suppression/cooldown
+* per-job alert settings
+
+Alert examples:
+
+* job failed
+* job failed N times in 1 hour
+* no successful run in X hours
+* worker offline
+* retry exhaustion
+* failure rate above threshold
+
+## Phase 8 — Retention Engine
+
+Goal: enforce free and paid retention.
+
+Deliverables:
+
+* free tier retention job, default 7 days
+* paid tier retention job, default 2 years
+* future unlimited tier support
+* deletion/archive strategy
+* tenant-level retention settings
+
+Build task:
+
+* Add scheduled retention worker
+* Delete old raw events
+* Keep longer-lived aggregates if desired
+
+## Phase 9 — Scale Hardening
+
+Goal: prepare for growth without adding external infrastructure too early.
+
+Deliverables:
+
+* batched Postgres inserts
+* partitioned event tables by month or week
+* indexes by tenant/time/event/job
+* API rate limiting
+* backpressure handling
+* ingestion queue metrics
+* dead-letter table for malformed batches
+
+Build task:
+
+* Add partitioning strategy
+* Add ingestion metrics
+* Add admin-visible ingestion health
+
+## MVP Exclusions
+
+Do not include initially:
+
+* Kafka
+* RabbitMQ
+* MongoDB
+* ClickHouse
+* full raw event search UI
+* enterprise SSO
+* cross-cluster job synchronization
+* unlimited retention
+
+---
+
+# 3. `app.durablestack.com` Build Plan
+
+## Purpose
+
+`app.durablestack.com` is the customer portal.
+
+It lets users register, create projects, create tenants/environments, get credentials, view reports, configure alerts, manage team access, and pay for hosted observability.
+
+## Fit in Overall Plan
+
+This is the monetization and operational visibility layer.
+
+It turns OSS users into paid customers.
+
+## Success Criteria
+
+The app succeeds if a developer can:
+
+* create an account
+* create an organization
+* create a project
+* create staging/prod tenants
+* copy tenant ID and client secret
+* add credentials to their app
+* see telemetry arrive
+* view reports
+* configure alerts
+* invite coworkers
+* start a paid subscription
+
+## Recommended Stack
+
+* .NET 9
+* ASP.NET Core MVC or Razor Pages
+* ASP.NET Core Identity
+* Postgres
+* Stripe Billing
+* Server-rendered UI
+* Bootstrap or Tailwind
+* Minimal JavaScript
+* Background workers for billing sync and alert delivery visibility
+
+## Core Domain Model
+
+* User
+* Organization
+* OrganizationMember
+* Project
+* Environment (modeled as `Tenant.EnvironmentName` initially)
+* Tenant
+* TenantCredential
+* Subscription
+* Plan
+* AlertRule
+* WebhookEndpoint
+* EmailAlertRecipient
+* Invitation
+* AuditLog
+
+Hierarchy:
+
+* User belongs to organizations
+* Organization owns projects
+* Project has one or more tenants, each tagged by environment name (for example `Staging`, `Production`)
+* Tenant has credentials and reporting data
+* Organization owns billing
+
+Implementation note for v0:
+
+* keep environment as a simple name on `Tenant` to reduce model complexity
+* move to first-class `Environment` entity later only if you need environment-level policy, RBAC, or metadata
+
+## Phase 1 — Account and Organization Foundation
+
+Goal: let users register and create an organization.
+
+Deliverables:
+
+* user registration
+* login/logout
+* password reset
+* email verification
+* organization creation
+* organization switcher
+* member roles
+
+Roles:
+
+* Owner
+* Admin
+* Developer
+* Viewer
+* Billing
+
+Build task:
+
+* Create `DurableStack.App`
+* Add ASP.NET Identity
+* Add organization/member tables
+* Add role-based authorization
+
+## Phase 2 — Project and Tenant Management
+
+Goal: let users create real SDK credentials.
+
+Deliverables:
+
+* create project
+* create environment
+* create tenant
+* generate tenant ID
+* generate client secret
+* hash client secret before storage
+* rotate client secret
+* revoke tenant credential
+* copy SDK configuration snippet
+
+Example UI flow:
+
+1. Create project: `app.acme.com`
+2. Add environment: `Staging`
+3. Add environment: `Production`
+4. Copy tenant ID + client secret
+5. Paste into DurableStack config
+
+## Phase 3 — Onboarding Flow
+
+Goal: get users to first telemetry quickly.
+
+Deliverables:
+
+* guided setup screen
+* provider-specific code snippet
+* hosted sync configuration snippet
+* “waiting for first event” status
+* first event success screen
+* troubleshooting guide
+
+Build task:
+
+* Add onboarding wizard
+* Poll API/reporting DB for first telemetry
+* Show last received event timestamp
+
+## Phase 4 — Reporting Dashboard
+
+Goal: make hosted observability valuable.
+
+Deliverables:
+
+* project overview
+* environment overview
+* job health list
+* recent failures
+* run volume chart
+* failure trend chart
+* retry trend chart
+* average duration
+* p95 duration
+* worker status
+* last successful run per job
+
+Important:
+
+* dashboards should query aggregate tables, not raw events
+
+## Phase 5 — Job Detail Pages
+
+Goal: help developers debug job behavior.
+
+Deliverables:
+
+* job detail page
+* recent runs
+* success/failure counts
+* retry counts
+* duration history
+* latest error summary
+* alert status
+* environment filter
+* date range filter
+
+MVP date ranges:
+
+* last 24 hours
+* last 7 days
+* last 30 days
+* custom range for paid plans
+
+## Phase 6 — Alert Configuration
+
+Goal: create paid-tier value.
+
+Deliverables:
+
+* alert rules per tenant/project/environment/job
+* email alerts
+* webhook alerts
+* alert cooldown
+* test alert button
+* alert history
+* enable/disable alert rules
+
+Initial alert types:
+
+* job failed
+* job failed repeatedly
+* job has not succeeded recently
+* worker offline
+* retry exhausted
+
+## Phase 7 — Billing and Plans
+
+Goal: monetize from the beginning.
+
+Recommended initial plans:
+
+### Free
+
+* 7 days retention
+* basic reports
+* limited projects/tenants
+* no alerts or limited alerts
+
+### Pro — $200/month
+
+* 2 years retention
+* advanced reports
+* comparison charts
+* email alerts
+* webhook alerts
+* multiple team members
+
+Future:
+
+### Enterprise
+
+* unlimited/custom retention
+* SSO
+* audit exports
+* priority support
+* cluster sync features
+
+Deliverables:
+
+* Stripe customer creation
+* Stripe checkout
+* Stripe customer portal
+* subscription status sync
+* plan enforcement
+* failed payment handling
+* billing page
+
+## Phase 8 — Team Collaboration
+
+Goal: make the paid product useful for teams.
+
+Deliverables:
+
+* invite coworker
+* accept invitation
+* role management
+* remove member
+* project-level access later if needed
+* audit log for key changes
+
+Audit events:
+
+* project created
+* tenant created
+* client secret rotated
+* alert rule changed
+* member invited
+* plan changed
+
+## Phase 9 — Admin/Internal Tools
+
+Goal: help you operate the platform solo.
+
+Deliverables:
+
+* internal admin dashboard
+* tenant lookup
+* organization lookup
+* ingestion volume by tenant
+* top noisy tenants
+* failed alert deliveries
+* billing status
+* API health summary
+
+Build task:
+
+* Add admin-only area
+* Keep it simple but useful
+
+## MVP Exclusions
+
+Do not include initially:
+
+* SSO
+* enterprise contracts
+* custom RBAC
+* raw event explorer
+* complex chart builder
+* mobile app
+* per-seat billing
+* unlimited retention
+* cross-cluster job control
+
+---
+
+# Recommended Build Order
+
+I would build in this order:
+
+1. `app.durablestack.com`
+2. `api.durablestack.com`
+3. SDK hosted sync package changes
+4. `durablestack.com`
+
+But launch publicly in this order:
+
+1. `durablestack.com`
+2. NuGet packages
+3. free hosted observability beta
+4. paid Pro tier
+
+The reason:
+
+You need the app/API foundations before hosted sync can work, but public launch needs the marketing/docs site first.

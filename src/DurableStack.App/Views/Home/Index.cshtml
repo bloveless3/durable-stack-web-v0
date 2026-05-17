@@ -1,0 +1,31 @@
+﻿@model DurableStack.App.Models.AppHomeViewModel
+@{
+    ViewData["Title"] = "DurableStack App";
+}
+
+<div class="container py-4">
+    <h1 class="display-6 mb-3">DurableStack App</h1>
+    <p class="text-muted">Parallel foundation check between App and API.</p>
+
+    <div class="card">
+        <div class="card-body">
+            <h2 class="h5 mb-3">API Connection</h2>
+            <dl class="row mb-0">
+                <dt class="col-sm-4">Status</dt>
+                <dd class="col-sm-8">@Model.ApiStatus</dd>
+
+                <dt class="col-sm-4">Tenant ID</dt>
+                <dd class="col-sm-8">@(Model.TenantId ?? "N/A")</dd>
+
+                <dt class="col-sm-4">Total Events</dt>
+                <dd class="col-sm-8">@(Model.TotalEvents?.ToString() ?? "N/A")</dd>
+
+                <dt class="col-sm-4">Failed Events</dt>
+                <dd class="col-sm-8">@(Model.FailedEvents?.ToString() ?? "N/A")</dd>
+
+                <dt class="col-sm-4">Last Event (UTC)</dt>
+                <dd class="col-sm-8">@(Model.LastEventAtUtc?.ToString("u") ?? "N/A")</dd>
+            </dl>
+        </div>
+    </div>
+</div>

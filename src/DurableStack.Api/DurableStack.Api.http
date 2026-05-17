@@ -1,0 +1,6 @@
+@DurableStack.Api_HostAddress = http://localhost:5118
+
+GET {{DurableStack.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
