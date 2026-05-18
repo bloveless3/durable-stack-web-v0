@@ -1,6 +1,20 @@
 ﻿@{
-    ViewData["Title"] = "Privacy Policy";
+    ViewData["Title"] = "Privacy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<section class="page-header">
+    <p class="eyebrow">Legal</p>
+    <h1 class="page-title">Privacy and telemetry policy</h1>
+    <p class="page-subtitle">DurableStack keeps worker payload contracts stable and enforces tenant data policy at ingestion.</p>
+</section>
+
+<section class="panel-card">
+    <p>
+        This environment is currently configured for local development. As policy settings evolve,
+        this page will document what data is retained and how tenant-level redaction is applied.
+    </p>
+</section>
+
+@section Scripts {
+    <script src="~/js/pages/privacy-page.js" asp-append-version="true"></script>
+}

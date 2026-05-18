@@ -38,7 +38,17 @@ Initial solution scaffolding for hosted DurableStack platform services.
   - `src/DurableStack.ControlPlane/Migrations/ControlPlane`
   - `src/DurableStack.Telemetry/Migrations/Telemetry`
 - App foundation includes typed API client and a basic dashboard check wired to API summary.
+- App shell now includes a static header, workspace sidebar, and Ctrl+K command palette UX baseline.
+- Styling now uses real Tailwind CSS with SCSS entry source (`src/DurableStack.App/wwwroot/scss/app.scss`) and compiled output (`src/DurableStack.App/wwwroot/scss/app.css`).
 - Tenant options are currently treated as ingestion-time server policy only; workers do not fetch runtime options.
+
+## UX notes
+
+- Page-specific scripts are loaded from dedicated files under `src/DurableStack.App/wwwroot/js/pages/`.
+- Layout-level interactions live under `src/DurableStack.App/wwwroot/js/layout/`.
+- Tailwind/SCSS compilation is wired for Visual Studio via `compilerconfig.json` and also runs via MSBuild pre-build in `DurableStack.App.csproj`.
+- Marketing/docs search should reuse the command-palette interaction pattern with a docs index backend when `durablestack.com` is built.
+- Planned next UX track: auth pages (registration/login/reset) with a distinct marketing-forward visual language, separate from the in-app dashboard shell.
 
 ## Notes
 

@@ -1,0 +1,17 @@
+{
+  "name": "durablestack.app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "tailwind:build": "tailwindcss -i ./wwwroot/scss/app.scss -o ./wwwroot/scss/app.css --minify",
+    "tailwind:watch": "tailwindcss -i ./wwwroot/scss/app.scss -o ./wwwroot/scss/app.css --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

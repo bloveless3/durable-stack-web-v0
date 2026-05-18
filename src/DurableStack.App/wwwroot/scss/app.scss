@@ -1,0 +1,294 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --surface-bg: #f5f7fb;
+    --surface-panel: #ffffff;
+    --surface-border: #dde3ef;
+    --ink-strong: #0f172a;
+    --ink-default: #23324a;
+    --ink-soft: #64748b;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --shadow-soft: 0 20px 45px -28px rgba(15, 23, 42, 0.35);
+  }
+
+  body.app-body {
+    @apply m-0 min-h-screen bg-surface-bg font-sans text-ink-default;
+    background: radial-gradient(circle at 12% 0%, #e9f0ff 0, #f5f7fb 36%), var(--surface-bg);
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply mx-auto max-w-[1400px] px-5 pb-7;
+  }
+
+  .app-header {
+    @apply sticky top-0 z-20 py-4;
+    backdrop-filter: blur(8px);
+  }
+
+  .app-header-inner {
+    @apply flex items-center justify-between gap-5 rounded-2xl border border-surface-border/90 bg-white/90 px-4 py-3 shadow-soft;
+  }
+
+  .brand {
+    @apply inline-flex min-w-[185px] items-center gap-2;
+  }
+
+  .brand-mark {
+    @apply h-[1.05rem] w-[1.05rem] rounded-full;
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    box-shadow: 0 0 0 3px #e6eeff;
+  }
+
+  .brand-text {
+    @apply font-bold tracking-tight text-ink-strong;
+  }
+
+  .brand-surface {
+    @apply rounded-full border border-surface-border px-2 py-0.5 text-xs text-ink-soft;
+  }
+
+  .top-nav {
+    @apply flex flex-1 items-center justify-center gap-4;
+  }
+
+  .top-nav-link {
+    @apply text-sm text-ink-soft transition-colors duration-150 ease-out hover:text-ink-strong;
+  }
+
+  .app-header-tools {
+    @apply flex items-center gap-2.5;
+  }
+
+  .search-trigger {
+    @apply inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-surface-border bg-[#f8fbff] px-3 py-1.5 text-xs text-ink-soft;
+  }
+
+  .search-shortcut {
+    @apply ml-1.5 border-l border-[#d8e0ef] pl-2 text-[#8ca0bf];
+  }
+
+  .avatar-button {
+    @apply h-8 w-8 cursor-pointer rounded-full border border-[#cad7ef] bg-[#f0f5ff] text-[0.73rem] font-bold text-[#1e3a8a];
+  }
+
+  .app-grid {
+    @apply mt-3 grid grid-cols-[230px_minmax(0,1fr)] gap-4;
+  }
+
+  .app-sidebar {
+    @apply sticky top-[5.25rem] self-start rounded-2xl border border-surface-border bg-surface-panel px-3 py-4;
+  }
+
+  .sidebar-label {
+    @apply mb-2 text-[0.72rem] uppercase tracking-[0.08em] text-ink-soft;
+  }
+
+  .sidebar-link {
+    @apply block rounded-[0.62rem] px-2.5 py-2 text-sm text-slate-600 hover:bg-[#f1f5ff] hover:text-slate-800;
+  }
+
+  .sidebar-link.is-active {
+    @apply bg-accent-soft font-semibold text-blue-700;
+  }
+
+  .app-main {
+    @apply min-w-0;
+  }
+
+  .page-header {
+    @apply mb-4;
+  }
+
+  .eyebrow {
+    @apply m-0 text-xs uppercase tracking-[0.08em] text-[#6b7f9e];
+  }
+
+  .page-title {
+    @apply m-0 mt-1 text-[clamp(1.6rem,2vw,2.1rem)] tracking-tight text-ink-strong;
+  }
+
+  .page-subtitle {
+    @apply mt-2 max-w-[72ch] text-ink-soft;
+  }
+
+  .metrics-grid {
+    @apply mb-4 grid grid-cols-4 gap-3;
+  }
+
+  .metric-card,
+  .panel-card {
+    @apply rounded-2xl border border-surface-border bg-surface-panel;
+  }
+
+  .metric-card {
+    @apply px-3.5 py-3;
+  }
+
+  .metric-label {
+    @apply m-0 text-[0.74rem] uppercase tracking-[0.08em] text-[#7b8ca8];
+  }
+
+  .metric-value {
+    @apply mt-2 text-2xl font-bold leading-tight text-ink-strong;
+  }
+
+  .metric-value-small {
+    @apply break-words text-[0.96rem] leading-[1.35];
+  }
+
+  .panel-grid {
+    @apply grid grid-cols-[1.3fr_1fr] gap-3;
+  }
+
+  .panel-card {
+    @apply p-4;
+  }
+
+  .panel-header {
+    @apply mb-3 flex items-baseline justify-between gap-2.5;
+  }
+
+  .panel-header h2 {
+    @apply m-0 text-[1.05rem] text-ink-strong;
+  }
+
+  .panel-meta {
+    @apply text-xs text-[#7b8ca8];
+  }
+
+  .detail-list {
+    @apply m-0;
+  }
+
+  .detail-list > div {
+    @apply flex justify-between gap-4 border-t border-[#edf1f8] py-2.5;
+  }
+
+  .detail-list > div:first-child {
+    @apply border-t-0 pt-0;
+  }
+
+  .detail-list dt {
+    @apply text-[#6b7f9e];
+  }
+
+  .detail-list dd {
+    @apply m-0 text-right text-ink-strong;
+  }
+
+  .task-list {
+    @apply m-0 list-disc pl-4 text-[#35455e];
+  }
+
+  .task-list li + li {
+    @apply mt-2;
+  }
+
+  .app-footer {
+    @apply flex items-center gap-2 px-1 py-4 pb-1.5 text-xs text-[#6a7b97];
+  }
+
+  .footer-separator {
+    @apply text-[#95a6bf];
+  }
+
+  .command-overlay {
+    @apply fixed inset-0 z-40 grid place-items-start bg-slate-900/45 px-4 pb-4 pt-24;
+    backdrop-filter: blur(5px);
+  }
+
+  .command-overlay[hidden] {
+    @apply hidden;
+  }
+
+  .command-dialog {
+    @apply w-full max-w-[760px] overflow-hidden rounded-2xl border border-[#d6deed] bg-white;
+    box-shadow: 0 35px 70px -45px rgba(15, 23, 42, 0.62);
+  }
+
+  .command-header {
+    @apply flex items-center gap-2.5 border-b border-[#ebf0f8] px-4 py-3;
+  }
+
+  .command-input {
+    @apply flex-1 border-0 bg-transparent p-0 text-[0.95rem] text-slate-800 focus:outline-none;
+  }
+
+  .command-esc {
+    @apply cursor-pointer rounded-md border border-[#d7dfec] bg-[#f9fbff] px-1.5 py-0.5 text-[0.74rem] text-[#7386a3];
+  }
+
+  .command-body {
+    @apply px-4 py-3;
+  }
+
+  .command-muted {
+    @apply mb-2 text-xs text-[#7386a3];
+  }
+
+  .command-item {
+    @apply w-full cursor-pointer rounded-lg border border-transparent bg-transparent px-2 py-2 text-left text-[#34435a] hover:border-[#dbe6fb] hover:bg-[#f3f7ff] focus-visible:border-[#dbe6fb] focus-visible:bg-[#f3f7ff] focus-visible:outline-none;
+  }
+
+  .command-footer {
+    @apply border-t border-[#ebf0f8] px-4 py-2.5 text-xs text-[#7386a3];
+  }
+}
+
+@layer utilities {
+  @media (max-width: 1024px) {
+    .top-nav {
+      @apply hidden;
+    }
+
+    .metrics-grid {
+      @apply grid-cols-2;
+    }
+  }
+
+  @media (max-width: 840px) {
+    .app-shell {
+      @apply px-3;
+    }
+
+    .app-grid {
+      @apply grid-cols-1;
+    }
+
+    .app-sidebar {
+      @apply static;
+    }
+
+    .panel-grid {
+      @apply grid-cols-1;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .app-header-inner {
+      @apply flex-wrap justify-center;
+    }
+
+    .app-header-tools {
+      @apply w-full justify-center;
+    }
+
+    .search-trigger {
+      @apply flex-1 justify-center;
+    }
+
+    .metrics-grid {
+      @apply grid-cols-1;
+    }
+  }
+}
