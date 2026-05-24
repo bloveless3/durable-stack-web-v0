@@ -4,52 +4,55 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - DurableStack.App</title>
+    <script>
+        (function () {
+            var storedTheme = localStorage.getItem("durablestack-theme");
+            if (storedTheme === "dark" || storedTheme === "light") {
+                document.documentElement.setAttribute("data-theme", storedTheme);
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="~/scss/app.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/DurableStack.App.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("HeadStyles", required: false)
 </head>
 <body class="app-body">
-    <div class="app-shell">
+    <div class="app-frame" data-app-frame data-sidebar-open="false">
         <header class="app-header">
             <div class="app-header-inner">
-                <a class="brand" asp-area="" asp-controller="Home" asp-action="Index">
-                    <span class="brand-mark" aria-hidden="true"></span>
-                    <span class="brand-text">DurableStack</span>
-                    <span class="brand-surface">App</span>
-                </a>
+                <button type="button" class="app-menu-toggle" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" data-sidebar-open-trigger>
+                    <span aria-hidden="true">&#9776;</span>
+                </button>
 
-                <nav class="top-nav" aria-label="Primary">
-                    <a class="top-nav-link" asp-area="" asp-controller="Home" asp-action="Index">Overview</a>
-                    <a class="top-nav-link" href="#">Organizations</a>
-                    <a class="top-nav-link" href="#">Projects</a>
-                    <a class="top-nav-link" href="#">Users</a>
-                    <a class="top-nav-link" href="#">Billing</a>
-                </nav>
+                <a class="app-header-brand" asp-area="" asp-controller="Home" asp-action="Index">DurableStack</a>
 
                 <div class="app-header-tools">
-                    <button type="button" class="search-trigger" data-command-open>
-                        <span class="search-icon" aria-hidden="true">&#128269;</span>
-                        <span>Search</span>
-                        <span class="search-shortcut">Ctrl K</span>
-                    </button>
-                    <form method="post" asp-controller="Auth" asp-action="SignOutUser" class="inline-flex">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="avatar-button" aria-label="Sign out">Exit</button>
-                    </form>
+                    <button type="button" class="app-theme-toggle" data-theme-toggle aria-pressed="false">Theme</button>
                 </div>
             </div>
         </header>
 
-        <div class="app-grid">
-            <aside class="app-sidebar" aria-label="Workspace">
-                <p class="sidebar-label">Workspace</p>
-                <a class="sidebar-link is-active" href="#">Dashboard</a>
-                <a class="sidebar-link" href="#">My Organizations</a>
-                <a class="sidebar-link" href="#">Projects</a>
-                <a class="sidebar-link" href="#">API Credentials</a>
-                <a class="sidebar-link" href="#">Alerts</a>
-                <a class="sidebar-link" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        <div class="app-workspace">
+            <aside id="app-sidebar" class="app-sidebar" aria-label="Primary navigation" data-sidebar>
+                <p class="sidebar-label">Navigation</p>
+                <nav class="sidebar-nav" aria-label="Primary">
+                    <a class="sidebar-link" asp-area="" asp-controller="Home" asp-action="Index">Dashboard</a>
+                    <a class="sidebar-link" href="#">Reports</a>
+                    <a class="sidebar-link" href="#">Runs</a>
+                    <a class="sidebar-link" href="#">Jobs</a>
+                    <a class="sidebar-link" href="#">Workers</a>
+                    <a class="sidebar-link" href="#">Alerts</a>
+                    <a class="sidebar-link" href="#">Projects</a>
+                    <a class="sidebar-link" asp-area="" asp-controller="Home" asp-action="Privacy">Settings</a>
+                </nav>
+
+                <form method="post" asp-controller="Auth" asp-action="SignOutUser" class="sidebar-signout">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="sidebar-signout-button">Sign out</button>
+                </form>
             </aside>
+
+            <button type="button" class="app-sidebar-overlay" aria-label="Close navigation" data-sidebar-close-trigger></button>
 
             <main role="main" class="app-main">
                 @RenderBody()
@@ -62,29 +65,6 @@
             <span>Operational Visibility for Durable Jobs</span>
         </footer>
     </div>
-
-    <div class="command-overlay" data-command-overlay hidden>
-        <section class="command-dialog" role="dialog" aria-modal="true" aria-label="Search DurableStack app">
-            <header class="command-header">
-                <span class="search-icon" aria-hidden="true">&#128269;</span>
-                <input id="command-input" class="command-input" type="search" placeholder="Search organizations, projects, docs" autocomplete="off" />
-                <button type="button" class="command-esc" data-command-close>esc</button>
-            </header>
-            <div class="command-body">
-                <p class="command-muted">Jump to</p>
-                <button type="button" class="command-item">Organizations</button>
-                <button type="button" class="command-item">Projects</button>
-                <button type="button" class="command-item">Users</button>
-                <button type="button" class="command-item">API Keys</button>
-                <button type="button" class="command-item">Docs Search (marketing site)</button>
-            </div>
-            <footer class="command-footer">
-                <span>Use the same search UX for docs on <code>durablestack.com</code>.</span>
-            </footer>
-        </section>
-    </div>
-
-    <script src="~/js/layout/command-palette.js" asp-append-version="true"></script>
     <script src="~/js/layout/app-shell.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
