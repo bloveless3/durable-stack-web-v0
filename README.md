@@ -41,6 +41,7 @@ Initial solution scaffolding for hosted DurableStack platform services.
 - App shell now includes a static header, workspace sidebar, and Ctrl+K command palette UX baseline.
 - Styling now uses real Tailwind CSS with SCSS entry source (`src/DurableStack.App/wwwroot/scss/app.scss`) and compiled output (`src/DurableStack.App/wwwroot/scss/app.css`).
 - App auth foundation now includes ASP.NET Core Identity + cookie auth with an email-first flow (`/auth` -> `/auth/sign-in` or `/register`).
+- Identity policy currently enforces 12+ character passwords with non-alphanumeric requirement and account lockout (5 failed attempts, 15-minute lockout).
 - App Identity EF migration has been scaffolded under `src/DurableStack.App/Data/Migrations/Identity`.
 - Tenant options are currently treated as ingestion-time server policy only; workers do not fetch runtime options.
 - Design-time EF DbContext factories now resolve connection strings from project appsettings files first (`appsettings.json` + `appsettings.Development.json`) with env var fallback.
@@ -54,7 +55,7 @@ Initial solution scaffolding for hosted DurableStack platform services.
 - Auth has a separate layout and stylesheet (`src/DurableStack.App/Views/Shared/_AuthLayout.cshtml`, `src/DurableStack.App/wwwroot/scss/auth.scss`).
 - App includes a reusable `ICurrentUserContext` service for accessing the authenticated user from application code.
 - Marketing/docs search should reuse the command-palette interaction pattern with a docs index backend when `durablestack.com` is built.
-- Planned next UX track: enrich auth states (forgot password, magic link, Google) and add onboarding flow.
+- Planned next UX track: wire live external providers and email sign-in link, then add onboarding flow.
 
 ## Notes
 

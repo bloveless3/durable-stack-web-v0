@@ -51,11 +51,27 @@ public sealed class AuthController : Controller
 
     [HttpGet("auth/sign-in")]
     [AllowAnonymous]
-    public IActionResult SignIn(string email)
+    public async Task<IActionResult> SignIn(string email)
     {
+        var normalizedEmail = email.Trim();
+        var existingUser = await _userManager.FindByEmailAsync(normalizedEmail);
+        if (existingUser is null)
+        {
+            return RedirectToAction(nameof(Register), new { email = normalizedEmail });
+        }
+
+        var loginProviders = await _userManager.GetLoginsAsync(existingUser);
+        var allowPasswordSignIn = !string.IsNullOrWhiteSpace(existingUser.PasswordHash);
+
         return View(new AuthSignInViewModel
         {
-            Email = email
+            Email = normalizedEmail,
+            AllowPasswordSignIn = allowPasswordSignIn,
+            ExternalProviders = loginProviders
+                .Select(x => x.LoginProvider)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList()
         });
     }
 
@@ -64,19 +80,40 @@ public sealed class AuthController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SignIn(AuthSignInViewModel model)
     {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
-
-        var user = await _userManager.FindByEmailAsync(model.Email.Trim());
+        var normalizedEmail = model.Email.Trim();
+        var user = await _userManager.FindByEmailAsync(normalizedEmail);
         if (user is null)
         {
             ModelState.AddModelError(string.Empty, "No account exists for that email.");
             return View(model);
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: true, lockoutOnFailure: false);
+        var logins = await _userManager.GetLoginsAsync(user);
+        model.AllowPasswordSignIn = !string.IsNullOrWhiteSpace(user.PasswordHash);
+        model.ExternalProviders = logins
+            .Select(x => x.LoginProvider)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        if (!model.AllowPasswordSignIn)
+        {
+            ModelState.AddModelError(string.Empty, "This account is configured for external sign-in.");
+            return View(model);
+        }
+
+        var result = await _signInManager.PasswordSignInAsync(user, model.Password, isPersistent: true, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            ModelState.AddModelError(string.Empty, "Your account is temporarily locked after too many failed attempts. Try again later.");
+            return View(model);
+        }
+
         if (!result.Succeeded)
         {
             ModelState.AddModelError(string.Empty, "Invalid credentials.");

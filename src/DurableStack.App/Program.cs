@@ -3,11 +3,17 @@ using DurableStack.App.Services.Api;
 using DurableStack.App.Data;
 using DurableStack.App.Services.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<MvcViewOptions>(options =>
+{
+    options.HtmlHelperOptions.CheckBoxHiddenInputRenderMode = CheckBoxHiddenInputRenderMode.None;
+});
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
@@ -20,7 +26,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>(options =>
         options.Password.RequireDigit = true;
         options.Password.RequireUppercase = true;
         options.Password.RequireLowercase = true;
-        options.Password.RequiredLength = 8;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequiredLength = 12;
+        options.Password.RequiredUniqueChars = 1;
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     })
     .AddEntityFrameworkStores<AppIdentityDbContext>()
     .AddDefaultTokenProviders();
@@ -52,7 +63,7 @@ if (app.Environment.IsDevelopment())
     appIdentityDb.Database.Migrate();
 
     const string defaultAdminEmail = "admin@durablestack.com";
-    const string defaultAdminPassword = "Password0*";
+    const string defaultAdminPassword = "Password01!*";
 
     var adminUser = userManager.FindByEmailAsync(defaultAdminEmail).GetAwaiter().GetResult();
     if (adminUser is null)

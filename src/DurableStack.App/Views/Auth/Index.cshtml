@@ -16,10 +16,10 @@
         <input asp-for="Email" class="auth-input" autocomplete="email" autofocus />
         <span asp-validation-for="Email" class="auth-validation"></span>
 
-        <button type="submit" class="auth-primary">Find my account</button>
+        <button type="submit" class="auth-primary auth-primary-spaced">Find my account</button>
     </form>
 
-    <p class="auth-footer">&copy; 2026 DurableStack</p>
+    <p class="auth-footer">&copy; @DateTime.UtcNow.Year DurableStack</p>
 </section>
 
 @section Scripts {

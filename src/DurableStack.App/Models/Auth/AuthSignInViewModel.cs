@@ -9,8 +9,13 @@ public sealed class AuthSignInViewModel
     [Display(Name = "Email address")]
     public string Email { get; set; } = string.Empty;
 
-    [Required]
     [DataType(DataType.Password)]
     [Display(Name = "Password")]
     public string Password { get; set; } = string.Empty;
+
+    public bool AllowPasswordSignIn { get; set; }
+
+    public List<string> ExternalProviders { get; set; } = [];
+
+    public bool ExternalOnly => !AllowPasswordSignIn && ExternalProviders.Count > 0;
 }

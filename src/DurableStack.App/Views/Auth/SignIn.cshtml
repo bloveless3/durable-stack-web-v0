@@ -6,25 +6,70 @@
 
 <section class="auth-card" aria-label="Sign in">
     <p class="auth-brand">DurableStack</p>
-    <h1 class="auth-title">Welcome back</h1>
-    <p class="auth-subtitle">This email already has an account. Continue to sign in.</p>
+    @if (Model.ExternalOnly)
+    {
+        <h1 class="auth-title">Sign in with provider</h1>
+        <p class="auth-subtitle">This email is linked to external sign-in.</p>
+    }
+    else
+    {
+        <h1 class="auth-title">Welcome back</h1>
+        <p class="auth-subtitle">This email already has an account. Continue to sign in.</p>
+    }
+
+    @if (Model.ExternalProviders.Count > 0)
+    {
+        <div class="auth-provider-grid">
+            @foreach (var provider in Model.ExternalProviders)
+            {
+                var isGitHub = provider.Equals("GitHub", StringComparison.OrdinalIgnoreCase);
+                var providerLabel = provider.Equals("Google", StringComparison.OrdinalIgnoreCase)
+                    ? "Continue with Google"
+                    : provider.Equals("GitHub", StringComparison.OrdinalIgnoreCase)
+                        ? "Continue with GitHub"
+                        : $"Continue with {provider}";
+
+                <button type="button" class="auth-provider auth-primary-spaced @(isGitHub ? "auth-provider-dark" : string.Empty)" disabled aria-disabled="true">@providerLabel (Soon)</button>
+            }
+        </div>
+
+        @if (Model.AllowPasswordSignIn)
+        {
+            <p class="auth-divider">or sign in with password</p>
+        }
+    }
 
     <div class="auth-email-pill">@Model.Email</div>
 
-    <form method="post" asp-controller="Auth" asp-action="SignIn" class="auth-form" novalidate>
-        @Html.AntiForgeryToken()
-        <input asp-for="Email" type="hidden" />
-        <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
+    @if (Model.AllowPasswordSignIn)
+    {
+        <form method="post" asp-controller="Auth" asp-action="SignIn" class="auth-form" novalidate>
+            @Html.AntiForgeryToken()
+            <input asp-for="Email" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
 
-        <label asp-for="Password" class="auth-label"></label>
-        <input asp-for="Password" class="auth-input" autocomplete="current-password" autofocus />
-        <span asp-validation-for="Password" class="auth-validation"></span>
+            <div class="auth-field">
+                <label asp-for="Password" class="auth-label"></label>
+                <input asp-for="Password" class="auth-input" autocomplete="current-password" autofocus />
+                <span asp-validation-for="Password" class="auth-validation"></span>
+            </div>
 
-        <button type="submit" class="auth-primary">Sign in</button>
-    </form>
+            <button type="submit" class="auth-primary auth-primary-spaced">Sign in</button>
+        </form>
+
+        <button type="button" class="auth-secondary auth-secondary-muted" disabled aria-disabled="true">Email me a sign-in link (Soon)</button>
+    }
+    else
+    {
+        <div class="auth-form">
+            <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
+        </div>
+
+        <button type="button" class="auth-secondary auth-secondary-muted" disabled aria-disabled="true">Email me a sign-in link (Soon)</button>
+    }
 
     <a asp-controller="Auth" asp-action="Index" class="auth-secondary">Use a different email</a>
-    <p class="auth-footer">&copy; 2026 DurableStack</p>
+    <p class="auth-footer">&copy; @DateTime.UtcNow.Year DurableStack</p>
 </section>
 
 @section Scripts {

@@ -9,6 +9,12 @@
     <h1 class="auth-title">Create your account</h1>
     <p class="auth-subtitle">Fast setup in under a minute.</p>
 
+    <div class="auth-provider-grid">
+        <button type="button" class="auth-provider" disabled aria-disabled="true">Google (Soon)</button>
+        <button type="button" class="auth-provider auth-provider-dark" disabled aria-disabled="true">GitHub (Soon)</button>
+    </div>
+    <p class="auth-divider">or sign up with email</p>
+
     <div class="auth-email-pill">@Model.Email</div>
 
     <form method="post" asp-controller="Auth" asp-action="Register" class="auth-form" novalidate>
@@ -18,22 +24,24 @@
         <input asp-for="Email" type="hidden" />
 
         <div class="auth-grid-two">
-            <div>
+            <div class="auth-field">
                 <label asp-for="FirstName" class="auth-label"></label>
                 <input asp-for="FirstName" class="auth-input" autocomplete="given-name" />
                 <span asp-validation-for="FirstName" class="auth-validation"></span>
             </div>
-            <div>
+            <div class="auth-field">
                 <label asp-for="LastName" class="auth-label"></label>
                 <input asp-for="LastName" class="auth-input" autocomplete="family-name" />
                 <span asp-validation-for="LastName" class="auth-validation"></span>
             </div>
         </div>
 
-        <label asp-for="Password" class="auth-label"></label>
-        <input asp-for="Password" class="auth-input" autocomplete="new-password" />
-        <span asp-validation-for="Password" class="auth-validation"></span>
-        <p class="auth-help">Use 8+ characters with upper/lowercase and a number or symbol.</p>
+        <div class="auth-field">
+            <label asp-for="Password" class="auth-label"></label>
+            <input asp-for="Password" class="auth-input" autocomplete="new-password" />
+            <span asp-validation-for="Password" class="auth-validation"></span>
+        </div>
+        <p class="auth-help">Use 12+ characters with uppercase, lowercase, a number, and a symbol.</p>
 
         <label class="auth-checkbox-row">
             <input asp-for="AcceptTerms" />
@@ -41,11 +49,11 @@
         </label>
         <span asp-validation-for="AcceptTerms" class="auth-validation"></span>
 
-        <button type="submit" class="auth-primary">Create account</button>
+        <button type="submit" class="auth-primary auth-primary-spaced">Create account</button>
     </form>
 
     <a asp-controller="Auth" asp-action="Index" class="auth-secondary">Use a different email</a>
-    <p class="auth-footer">&copy; 2026 DurableStack</p>
+    <p class="auth-footer">&copy; @DateTime.UtcNow.Year DurableStack</p>
 </section>
 
 @section Scripts {

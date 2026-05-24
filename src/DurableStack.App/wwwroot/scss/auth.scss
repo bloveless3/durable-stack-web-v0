@@ -4,25 +4,26 @@
 
 @layer base {
   body.auth-body {
-    @apply min-h-screen bg-slate-200 text-slate-800;
-    background: linear-gradient(rgba(234, 240, 248, 0.78), rgba(234, 240, 248, 0.78)),
-      radial-gradient(circle at 16% 22%, #c8d8f2 0, transparent 46%),
-      radial-gradient(circle at 84% 18%, #d7e5f6 0, transparent 42%),
-      #e5edf7;
+    @apply min-h-screen text-slate-800;
+    background: linear-gradient(120deg, rgba(248, 250, 252, 0.86) 0%, rgba(244, 247, 251, 0.82) 100%),
+      radial-gradient(circle at 8% 12%, #dbe8fa 0, transparent 40%),
+      radial-gradient(circle at 92% 18%, #e7e9f8 0, transparent 36%),
+      linear-gradient(180deg, #eef2f8 0%, #e8edf5 100%);
   }
 }
 
 @layer components {
   .auth-shell {
-    @apply flex min-h-screen items-center justify-center px-4 py-8;
+    @apply flex min-h-screen items-center justify-center px-4 py-10;
   }
 
   .auth-card {
-    @apply w-full max-w-md rounded-2xl border border-slate-300/70 bg-white/95 px-6 py-7 shadow-xl;
+    @apply w-full max-w-md rounded-2xl border border-slate-200/80 bg-white px-6 py-6 shadow-xl backdrop-blur-sm;
+    background: rgba(255, 255, 255, 0.92);
   }
 
   .auth-brand {
-    @apply m-0 text-center text-sm font-semibold tracking-wide text-slate-700;
+    @apply m-0 text-center text-xs font-semibold uppercase tracking-[0.12em] text-slate-600;
   }
 
   .auth-title {
@@ -30,39 +31,73 @@
   }
 
   .auth-subtitle {
-    @apply mb-5 text-center text-lg text-slate-500;
+    @apply mb-4 text-center text-lg text-slate-500;
+  }
+
+  .auth-provider-grid {
+    @apply mb-3 grid grid-cols-2 gap-2;
+  }
+
+  .auth-provider {
+    @apply rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors;
+  }
+
+  .auth-provider[disabled] {
+    @apply cursor-not-allowed opacity-80;
+  }
+
+  .auth-provider-dark {
+    @apply border-slate-900 bg-slate-900 text-white;
+  }
+
+  .auth-divider {
+    @apply mb-3 text-center text-xs text-slate-500;
   }
 
   .auth-email-pill {
-    @apply mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-base font-medium text-blue-950;
+    @apply mb-3 rounded-lg border px-3 py-2 text-sm font-medium text-slate-900;
+    border-color: #b6d7b9;
+    background: rgba(208, 241, 191, 0.35);
   }
 
   .auth-form {
-    @apply space-y-3;
+    @apply space-y-2.5;
+  }
+
+  .auth-field {
+    @apply space-y-1.5;
   }
 
   .auth-label {
-    @apply block text-sm font-medium text-slate-600;
+    @apply block text-xs font-medium uppercase tracking-[0.08em] text-slate-600;
   }
 
   .auth-input {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-xl text-slate-900 outline-none transition-shadow focus:border-blue-600 focus:ring-2 focus:ring-blue-300;
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-900 outline-none transition-shadow focus:border-slate-700 focus:ring-2 focus:ring-slate-300;
   }
 
   .auth-primary {
-    @apply w-full rounded-xl bg-blue-600 px-4 py-3 text-xl font-semibold text-white transition-colors hover:bg-blue-700;
+    @apply w-full rounded-lg bg-slate-900 px-4 py-2.5 text-base font-semibold text-white transition-colors hover:bg-black;
+  }
+
+  .auth-primary-spaced {
+    margin-top: 1.5rem !important;
   }
 
   .auth-secondary {
-    @apply mt-2 block w-full rounded-xl border border-blue-600 px-4 py-3 text-center text-xl font-medium text-blue-700 transition-colors hover:bg-blue-50;
+    @apply mt-2 block w-full rounded-lg border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100;
+  }
+
+  .auth-secondary-muted {
+    @apply cursor-not-allowed bg-slate-50 text-slate-500 hover:bg-slate-50;
   }
 
   .auth-validation {
-    @apply text-sm text-red-600;
+    @apply text-xs text-red-600;
   }
 
   .auth-help {
-    @apply m-0 text-sm text-slate-500;
+    @apply m-0 text-xs text-slate-500;
   }
 
   .auth-checkbox-row {
@@ -78,7 +113,7 @@
   }
 
   .auth-footer {
-    @apply mb-0 mt-5 text-center text-sm text-slate-400;
+    @apply mb-0 mt-4 text-center text-xs text-slate-400;
   }
 }
 
@@ -98,7 +133,11 @@
   .auth-input,
   .auth-primary,
   .auth-secondary {
-    @apply text-lg;
+    @apply text-base;
+  }
+
+  .auth-provider-grid {
+    @apply grid-cols-1;
   }
 
   .auth-grid-two {

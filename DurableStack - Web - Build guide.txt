@@ -603,6 +603,12 @@ Build task:
 * Add organization/member tables
 * Add role-based authorization
 
+Current implementation note:
+
+* password policy: minimum 12 characters, upper/lowercase, digit, and non-alphanumeric
+* lockout policy: 5 failed attempts, 15-minute lockout window
+* email sign-in link UI can be shown as placeholder until token flow is wired
+
 ## Phase 2 — Project and Tenant Management
 
 Goal: let users create real SDK credentials.
