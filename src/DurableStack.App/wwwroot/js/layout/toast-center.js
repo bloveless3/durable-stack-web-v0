@@ -65,7 +65,7 @@
     close.className = "app-toast-close";
     close.setAttribute("data-toast-dismiss", "");
     close.setAttribute("aria-label", "Dismiss notification");
-    close.innerHTML = "&times;";
+    close.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i>';
 
     toast.appendChild(body);
     toast.appendChild(close);

@@ -19,7 +19,9 @@
 
             <article class="app-toast app-toast-@toastType" data-toast data-toast-type="@toastType" data-toast-timeout="@toast.TimeoutMs">
                 <div class="app-toast-body">@toast.Message</div>
-                <button type="button" class="app-toast-close" data-toast-dismiss aria-label="Dismiss notification">&times;</button>
+                <button type="button" class="app-toast-close" data-toast-dismiss aria-label="Dismiss notification">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
             </article>
         }
     </div>

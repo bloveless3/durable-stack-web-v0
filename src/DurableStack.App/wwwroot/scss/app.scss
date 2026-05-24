@@ -79,6 +79,10 @@
     color: var(--header-ink);
   }
 
+  .app-menu-toggle i {
+    @apply text-base;
+  }
+
   .app-header-brand {
     @apply absolute left-1/2 -translate-x-1/2 text-base font-semibold tracking-tight;
     color: var(--header-ink);
@@ -92,11 +96,11 @@
     @apply h-8 rounded-md border px-2.5 text-xs font-semibold uppercase tracking-[0.08em] transition-colors;
     border-color: var(--header-border);
     color: var(--header-ink);
-    background: transparent;
+    background: color-mix(in srgb, var(--header-bg) 94%, transparent 6%);
   }
 
   .app-theme-toggle:hover {
-    background: color-mix(in srgb, var(--header-bg) 85%, var(--header-ink) 15%);
+    background: color-mix(in srgb, var(--header-bg) 74%, var(--sidebar-link-hover-bg) 26%);
   }
 
   .app-workspace {
@@ -108,7 +112,7 @@
   }
 
   .app-sidebar {
-    @apply fixed bottom-0 left-0 top-[var(--header-height)] z-50 flex w-[var(--sidebar-width)] -translate-x-full flex-col overflow-y-auto border-r px-3 py-4 transition-transform duration-200 ease-out;
+    @apply fixed bottom-0 left-0 top-[var(--header-height)] z-50 flex w-[var(--sidebar-width)] -translate-x-full flex-col overflow-y-auto border-r px-3 pb-0 pt-4 transition-transform duration-200 ease-out;
     background: var(--sidebar-bg);
     border-color: var(--sidebar-border);
   }
@@ -137,19 +141,61 @@
     color: var(--sidebar-link-active-ink);
   }
 
-  .sidebar-signout {
-    @apply mt-auto px-1 pt-4;
+  .sidebar-profile {
+    @apply -mx-3 mb-0 mt-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2.5 border-t px-3 pb-4 pt-3;
+    border-color: color-mix(in srgb, var(--sidebar-border) 75%, #ffffff 25%);
+    background: color-mix(in srgb, var(--sidebar-bg) 90%, #ffffff 10%);
   }
 
-  .sidebar-signout-button {
-    @apply w-full rounded-md border px-3 py-2 text-sm font-medium transition-colors;
-    border-color: var(--sidebar-border);
+  .sidebar-profile-avatar {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold uppercase;
+    border-color: color-mix(in srgb, var(--sidebar-border) 62%, #ffffff 38%);
     color: var(--sidebar-link);
-    background: color-mix(in srgb, var(--sidebar-bg) 88%, #ffffff 12%);
+    background: color-mix(in srgb, var(--sidebar-bg) 72%, #ffffff 28%);
   }
 
-  .sidebar-signout-button:hover {
-    background: var(--sidebar-link-hover-bg);
+  .sidebar-profile-meta {
+    @apply min-w-0;
+  }
+
+  .sidebar-profile-name,
+  .sidebar-profile-email {
+    @apply block break-words text-[0.78rem] leading-[1.35] no-underline;
+    color: var(--sidebar-link);
+  }
+
+  .sidebar-profile-name {
+    @apply font-semibold;
+  }
+
+  .sidebar-profile-email {
+    @apply mt-0.5;
+    opacity: 0.9;
+  }
+
+  .sidebar-profile-link {
+    @apply mt-1 inline-flex text-[0.7rem] font-semibold uppercase tracking-[0.08em] no-underline;
+    color: var(--sidebar-label);
+  }
+
+  .sidebar-profile-signout {
+    @apply self-center;
+  }
+
+  .sidebar-profile-signout-button {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-md border text-base transition-colors;
+    border-color: color-mix(in srgb, var(--sidebar-border) 75%, #ffffff 25%);
+    color: var(--sidebar-link);
+    background: color-mix(in srgb, var(--sidebar-bg) 86%, #ffffff 14%);
+  }
+
+  .sidebar-profile-signout-button i {
+    @apply text-sm;
+  }
+
+  .sidebar-profile-signout-button:hover {
+    background: color-mix(in srgb, var(--sidebar-bg) 74%, var(--sidebar-link-hover-bg) 26%);
+    color: var(--sidebar-link-active-ink);
   }
 
   .app-sidebar-overlay {
@@ -218,8 +264,12 @@
   }
 
   .app-toast-close {
-    @apply h-6 w-6 rounded-md border border-transparent bg-transparent text-base leading-none;
+    @apply h-6 w-6 rounded-md border border-transparent bg-transparent leading-none;
     color: var(--muted-ink);
+  }
+
+  .app-toast-close i {
+    @apply text-sm;
   }
 
   .app-toast-close:hover {
@@ -288,7 +338,7 @@
   }
 
   .app-page-control-button:hover {
-    background: color-mix(in srgb, var(--card-bg) 78%, var(--sidebar-link-hover-bg) 22%);
+    background: color-mix(in srgb, var(--card-bg) 74%, var(--sidebar-link-hover-bg) 26%);
   }
 
   .app-page-control-button:active {
@@ -472,6 +522,13 @@
 }
 
 @layer utilities {
+  @media (max-width: 767px) {
+    .app-tooltip:before,
+    .app-tooltip:after {
+      display: none !important;
+    }
+  }
+
   @media (min-width: 768px) {
     .app-toast-region {
       @apply px-0;

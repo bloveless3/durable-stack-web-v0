@@ -1,4 +1,46 @@
-﻿<!DOCTYPE html>
+﻿@using DurableStack.App.Services.Identity
+@inject ICurrentUserContext CurrentUserContext
+@{
+    var currentUserName = CurrentUserContext.DisplayName;
+    if (string.IsNullOrWhiteSpace(currentUserName) && !string.IsNullOrWhiteSpace(CurrentUserContext.Email))
+    {
+        currentUserName = CurrentUserContext.Email;
+    }
+
+    var currentUserEmail = CurrentUserContext.Email ?? "";
+    var userPrimaryLine = "DurableStack User";
+    string? userSecondaryLine = null;
+
+    if (!string.IsNullOrWhiteSpace(currentUserName) && !string.Equals(currentUserName, currentUserEmail, StringComparison.OrdinalIgnoreCase))
+    {
+        userPrimaryLine = currentUserName;
+        userSecondaryLine = string.IsNullOrWhiteSpace(currentUserEmail) ? null : currentUserEmail;
+    }
+    else if (!string.IsNullOrWhiteSpace(currentUserEmail))
+    {
+        userPrimaryLine = currentUserEmail;
+    }
+
+    var initials = "DU";
+
+    if (!string.IsNullOrWhiteSpace(currentUserName))
+    {
+        var tokens = currentUserName.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (tokens.Length >= 2)
+        {
+            initials = string.Concat(tokens[0][0], tokens[1][0]).ToUpperInvariant();
+        }
+        else if (tokens.Length == 1)
+        {
+            var firstToken = tokens[0];
+            initials = firstToken.Length >= 2
+                ? firstToken[..2].ToUpperInvariant()
+                : firstToken.ToUpperInvariant();
+        }
+    }
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -13,6 +55,7 @@
         })();
     </script>
     <link rel="stylesheet" href="~/scss/app.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="~/DurableStack.App.styles.css" asp-append-version="true" />
     @await RenderSectionAsync("HeadStyles", required: false)
 </head>
@@ -21,7 +64,7 @@
         <header class="app-header">
             <div class="app-header-inner">
                 <button type="button" class="app-menu-toggle" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" data-sidebar-open-trigger>
-                    <span aria-hidden="true">&#9776;</span>
+                    <i class="fa-solid fa-bars" aria-hidden="true"></i>
                 </button>
 
                 <a class="app-header-brand" asp-area="" asp-controller="Home" asp-action="Index">DurableStack</a>
@@ -46,10 +89,25 @@
                     <a class="sidebar-link" asp-area="" asp-controller="Home" asp-action="Privacy">Settings</a>
                 </nav>
 
-                <form method="post" asp-controller="Auth" asp-action="SignOutUser" class="sidebar-signout">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="sidebar-signout-button">Sign out</button>
-                </form>
+                <section class="sidebar-profile" aria-label="User profile">
+                    <a class="sidebar-profile-avatar" asp-area="" asp-controller="Home" asp-action="Profile" aria-label="Open profile">@initials</a>
+
+                    <div class="sidebar-profile-meta">
+                        <a class="sidebar-profile-name" asp-area="" asp-controller="Home" asp-action="Profile">@userPrimaryLine</a>
+                        @if (!string.IsNullOrWhiteSpace(userSecondaryLine))
+                        {
+                            <a class="sidebar-profile-email" asp-area="" asp-controller="Home" asp-action="Profile">@userSecondaryLine</a>
+                        }
+                        <a class="sidebar-profile-link" asp-area="" asp-controller="Home" asp-action="Profile">Profile</a>
+                    </div>
+
+                    <form method="post" asp-controller="Auth" asp-action="SignOutUser" class="sidebar-profile-signout">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="sidebar-profile-signout-button" aria-label="Sign out" title="Sign out">
+                            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                </section>
             </aside>
 
             <button type="button" class="app-sidebar-overlay" aria-label="Close navigation" data-sidebar-close-trigger></button>

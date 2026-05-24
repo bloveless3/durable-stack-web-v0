@@ -4,6 +4,7 @@ using DurableStack.App.Models;
 using DurableStack.App.Services.Api;
 using Microsoft.AspNetCore.Authorization;
 using DurableStack.App.Extensions;
+using DurableStack.App.Services.Identity;
 
 namespace DurableStack.App.Controllers;
 
@@ -13,15 +14,18 @@ public class HomeController : Controller
     private readonly ILogger<HomeController> _logger;
     private readonly DurableStackApiClient _apiClient;
     private readonly DurableStackApiOptions _apiOptions;
+    private readonly ICurrentUserContext _currentUserContext;
 
     public HomeController(
         ILogger<HomeController> logger,
         DurableStackApiClient apiClient,
-        Microsoft.Extensions.Options.IOptions<DurableStackApiOptions> apiOptions)
+        Microsoft.Extensions.Options.IOptions<DurableStackApiOptions> apiOptions,
+        ICurrentUserContext currentUserContext)
     {
         _logger = logger;
         _apiClient = apiClient;
         _apiOptions = apiOptions.Value;
+        _currentUserContext = currentUserContext;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -47,8 +51,6 @@ public class HomeController : Controller
             model.TotalEvents = report.TotalEvents;
             model.FailedEvents = report.FailedEvents;
             model.LastEventAtUtc = report.LastEventAtUtc;
-
-            TempData.AddToastNotification("success", "Here is a new success message");
         }
         catch (Exception ex)
         {
@@ -61,6 +63,12 @@ public class HomeController : Controller
 
     public IActionResult Privacy()
     {
+        return View();
+    }
+
+    public IActionResult Profile()
+    {
+        TempData.AddInfoToast($"Signed in as {_currentUserContext.Email ?? "unknown user"}.", 3000);
         return View();
     }
 
