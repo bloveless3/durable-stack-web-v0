@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - DurableStack.App</title>
+    @Html.RenderTitleParts()
     <script>
         (function () {
             var storedTheme = localStorage.getItem("durablestack-theme");
@@ -54,9 +54,41 @@
 
             <button type="button" class="app-sidebar-overlay" aria-label="Close navigation" data-sidebar-close-trigger></button>
 
-            <main role="main" class="app-main">
-                @RenderBody()
-            </main>
+                <div class="app-content-shell">
+                @{
+                    Microsoft.AspNetCore.Html.IHtmlContent? pageControls = null;
+
+                    if (IsSectionDefined("PageControls"))
+                    {
+                        var originalWriter = ViewContext.Writer;
+                        using var controlsWriter = new System.IO.StringWriter();
+
+                        try
+                        {
+                            ViewContext.Writer = controlsWriter;
+                            await RenderSectionAsync("PageControls", required: false);
+                        }
+                        finally
+                        {
+                            ViewContext.Writer = originalWriter;
+                        }
+
+                        pageControls = new Microsoft.AspNetCore.Html.HtmlString(controlsWriter.ToString());
+                    }
+
+                    var pageHeaderModel = new DurableStack.App.Models.Layout.AppPageHeaderViewModel
+                    {
+                        Title = Html.GetCurrentPageTitle(),
+                        Breadcrumbs = new[] { "Tenant", "Acme Platform", Html.GetCurrentPageTitle() },
+                        PageControls = pageControls
+                    };
+                }
+                <partial name="_AppPageHeader" model="pageHeaderModel" />
+
+                <main role="main" class="app-main">
+                    @RenderBody()
+                </main>
+            </div>
         </div>
 
         <footer class="app-footer">
@@ -65,6 +97,7 @@
             <span>Operational Visibility for Durable Jobs</span>
         </footer>
     </div>
+    <script src="~/js/layout/toast-center.js" asp-append-version="true"></script>
     <script src="~/js/layout/app-shell.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

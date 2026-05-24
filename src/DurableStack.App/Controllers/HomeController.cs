@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using DurableStack.App.Models;
 using DurableStack.App.Services.Api;
 using Microsoft.AspNetCore.Authorization;
+using DurableStack.App.Extensions;
 
 namespace DurableStack.App.Controllers;
 
@@ -46,6 +47,8 @@ public class HomeController : Controller
             model.TotalEvents = report.TotalEvents;
             model.FailedEvents = report.FailedEvents;
             model.LastEventAtUtc = report.LastEventAtUtc;
+
+            TempData.AddToastNotification("success", "Here is a new success message");
         }
         catch (Exception ex)
         {

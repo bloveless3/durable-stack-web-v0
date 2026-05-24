@@ -4,6 +4,12 @@ module.exports = {
     "./Views/**/*.cshtml",
     "./wwwroot/js/**/*.js"
   ],
+  safelist: [
+    "app-toast-success",
+    "app-toast-error",
+    "app-toast-warning",
+    "app-toast-info"
+  ],
   theme: {
     extend: {
       fontFamily: {

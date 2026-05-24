@@ -1,13 +1,15 @@
 ﻿@model DurableStack.App.Models.AppHomeViewModel
 @{
-    ViewData["Title"] = "Overview";
+    Html.AddTitleParts("Dashboard");
 }
 
-<section class="page-header">
-    <p class="eyebrow">Control Plane</p>
-    <h1 class="page-title">Workspace overview</h1>
-    <p class="page-subtitle">Monitor ingestion health while we build user, organization, and project workflows.</p>
-</section>
+@section PageControls {
+    <span class="app-tooltip app-tooltip-left" data-dashboard-refresh-tooltip data-tip="Last load --">
+        <button type="button" class="app-page-control-button app-page-control-button-icon" data-dashboard-refresh aria-label="Refresh dashboard data">
+            <span class="app-page-control-icon-refresh" aria-hidden="true">&#8635;</span>
+        </button>
+    </span>
+}
 
 <section class="metrics-grid" aria-label="Health metrics">
     <article class="metric-card">

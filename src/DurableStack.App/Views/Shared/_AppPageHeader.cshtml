@@ -1,0 +1,56 @@
+@model DurableStack.App.Models.Layout.AppPageHeaderViewModel
+@using DurableStack.App.Extensions
+
+@{
+    var serverToasts = TempData.GetToastNotifications();
+}
+
+<section class="app-page-header" data-page-header>
+    <div class="app-toast-region" data-toast-region>
+        @foreach (var toast in serverToasts)
+        {
+            var toastType = toast.Type?.Trim().ToLowerInvariant() switch
+            {
+                "success" => "success",
+                "error" => "error",
+                "warning" => "warning",
+                _ => "info"
+            };
+
+            <article class="app-toast app-toast-@toastType" data-toast data-toast-type="@toastType" data-toast-timeout="@toast.TimeoutMs">
+                <div class="app-toast-body">@toast.Message</div>
+                <button type="button" class="app-toast-close" data-toast-dismiss aria-label="Dismiss notification">&times;</button>
+            </article>
+        }
+    </div>
+
+    <div class="app-page-bar" aria-label="Page heading">
+        <div class="app-page-bar-main">
+            <h1 class="app-page-title">@Model.Title</h1>
+            <nav class="app-breadcrumbs" aria-label="Breadcrumb">
+                @for (var i = 0; i < Model.Breadcrumbs.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        <span aria-hidden="true">/</span>
+                    }
+
+                    if (i == Model.Breadcrumbs.Count - 1)
+                    {
+                        <span>@Model.Breadcrumbs[i]</span>
+                    }
+                    else
+                    {
+                        <a href="#">@Model.Breadcrumbs[i]</a>
+                    }
+                }
+            </nav>
+        </div>
+        <div class="app-page-controls">
+            @if (Model.PageControls is not null)
+            {
+                @Model.PageControls
+            }
+        </div>
+    </div>
+</section>
