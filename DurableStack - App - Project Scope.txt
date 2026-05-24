@@ -1,0 +1,788 @@
+# DurableStack Hosted App Platform
+
+## Revised Scope and Product Definition
+
+Version: Draft 2
+Product: DurableStack Hosted App Platform
+Related Product: DurableStack Runtime and Hosted Telemetry System
+Primary Runtime Stack: ASP.NET Core / .NET 9
+Frontend Framework: Tailwind CSS (mobile-first)
+Primary UI Pattern: Real-time operational control plane
+
+---
+
+# 1. Product Overview
+
+The DurableStack Hosted App Platform is the centralized operational and management interface for DurableStack tenants, projects, workers, jobs, and execution telemetry.
+
+The purpose of the platform is to provide customers with:
+
+* Real-time operational visibility
+* Distributed worker monitoring
+* Durable job execution analytics
+* Failure analysis and retry visibility
+* Multi-project dashboards and reporting
+* Team and tenant management
+* Secure credential management
+* Alerts, exports, and integrations
+
+The hosted platform is a major component of the DurableStack monetization strategy.
+
+The platform should provide a significantly better operational experience than raw OpenTelemetry integrations or customer-built dashboards, making the hosted service the preferred interface for monitoring and managing DurableStack environments.
+
+---
+
+# 2. Product Positioning
+
+DurableStack runtime solves:
+
+> “How do I reliably execute durable background jobs?”
+
+The hosted app platform solves:
+
+> “How do I monitor, understand, manage, and operate those jobs in production?”
+
+The hosted platform should feel comparable in quality and usability to modern operational SaaS platforms such as:
+
+* Datadog
+* Sentry
+* Grafana Cloud
+* Vercel
+* PlanetScale
+* GitHub Actions dashboards
+* Azure Application Insights
+
+The experience should prioritize:
+
+* clarity
+* operational visibility
+* ease of use
+* mobile usability
+* fast navigation
+* actionable information
+* minimal configuration friction
+
+---
+
+# 3. Core Product Principles
+
+## 3.1 Project-Aware, Not Project-Trapped
+
+Users must be able to:
+
+* view data across all projects
+* filter down to individual projects
+* compare multiple projects
+* build dashboards with mixed project scopes
+
+The system should not force hard project isolation in the UI experience.
+
+Example:
+
+A dashboard may contain:
+
+* Widget A → Runs for Project A
+* Widget B → Runs for Project B
+* Widget C → Failures across all projects
+
+---
+
+## 3.2 Real-Time Operational Visibility
+
+The long-term dashboard experience is intended to be near-real-time.
+
+For MVP, prioritize authentication, onboarding, and core operational pages first.
+
+Near-real-time auto-refresh is a post-onboarding phase.
+
+Reports do not require auto-refresh.
+
+---
+
+## 3.3 Mobile-First Design
+
+The application must be designed mobile-first from the beginning.
+
+Desktop support is important, but the system should remain highly usable on phones and tablets.
+
+---
+
+## 3.4 Operational Clarity
+
+The application should prioritize:
+
+* status visibility
+* trend visibility
+* failures
+* retries
+* worker health
+* actionable operational insights
+
+The platform should avoid becoming cluttered or overly developer-centric.
+
+---
+
+# 4. Technology Direction
+
+## Backend
+
+* ASP.NET Core (.NET 9)
+* REST API architecture
+* ASP.NET Core Identity + cookie authentication for hosted web app (MVP)
+* JWT authentication for selected API surfaces later
+* OAuth integration support
+* SignalR optional for future real-time upgrades
+
+## Frontend
+
+* Tailwind CSS
+* Mobile-first responsive design
+* Sidebar-based navigation
+* Component-driven architecture
+* Dashboard widget system
+
+## Authentication
+
+Support:
+
+* Email/password authentication (Identity + cookies, MVP)
+* Google OAuth (post-MVP)
+* Additional OAuth providers later
+
+Potential future providers:
+
+* GitHub
+* Microsoft
+* Okta
+
+---
+
+# 5. Multi-Tenant Hierarchy
+
+The system hierarchy should be:
+
+Account / Organization
+→ Projects / Applications
+→ Environments / Tenants
+→ Jobs / Runs / Workers / Events
+
+---
+
+# 6. Navigation Structure
+
+Primary left sidebar navigation:
+
+1. Dashboard
+2. Reports
+3. Runs
+4. Jobs
+5. Workers
+6. Alerts
+7. Projects
+8. Settings
+
+---
+
+# 7. Responsive Navigation Requirements
+
+## Mobile
+
+* Sidebar hidden by default
+* Hamburger/menu button opens sidebar
+* Sidebar slides over content
+* Sidebar width approximately 85% of screen width
+* Overlay behind sidebar when open
+
+## Desktop
+
+* Sidebar permanently visible
+* Optional future collapsed icon-only mode
+* Sidebar docked on left side
+
+---
+
+# 8. Dashboard System
+
+## 8.1 Dashboard Overview
+
+The dashboard system is a core product feature.
+
+MVP scope:
+
+* one default operational dashboard
+* curated widget set
+* saved global filters
+* mobile-first read experience
+
+Post-MVP scope:
+
+Users should be able to:
+
+* create multiple dashboards
+* customize layouts
+* add/remove widgets
+* resize widgets
+* reorder widgets
+* apply widget-level filters
+
+---
+
+## 8.2 Dashboard Widget Requirements
+
+Each widget should support independent filtering.
+
+Supported filters:
+
+* project
+* environment
+* job
+* worker
+* status
+* time range
+
+---
+
+## 8.3 Initial Widget Types
+
+### Operational Summary
+
+Displays:
+
+* runs in past 24h
+* failures
+* retries
+* active workers
+* success rate
+* average duration
+
+### Run Volume Chart
+
+Displays run volume over time.
+
+### Failure Trend Chart
+
+Displays failures over time.
+
+### Active Workers
+
+Displays currently active workers and heartbeat freshness.
+
+### Slowest Jobs
+
+Displays highest-duration jobs.
+
+### Most Failing Jobs
+
+Displays jobs with highest failure rates.
+
+### Recent Failures
+
+Displays latest failed runs.
+
+### Upcoming Scheduled Jobs
+
+Displays upcoming recurring job executions.
+
+---
+
+# 9. Real-Time Data Refresh Requirements
+
+Phase note:
+
+* implement after auth + onboarding foundation is complete
+
+Dashboard widgets should auto-refresh approximately every 15 seconds.
+
+API endpoints must support incremental refresh.
+
+Required API capabilities:
+
+* initial dataset retrieval
+* changed-since timestamp querying
+* server timestamps in responses
+* filtering support
+* lightweight polling
+
+Suggested API pattern:
+
+```http
+GET /api/dashboard/widgets/{id}?sinceUtc=2026-05-23T20:00:00Z
+```
+
+Reports do not require auto-refresh behavior.
+
+---
+
+# 10. Reports System
+
+Reports should provide deeper operational analysis.
+
+Reports are filterable, exportable, and historical.
+
+---
+
+# 11. Initial Reports
+
+## 11.1 Operational Health Report
+
+Displays:
+
+* success rates
+* failure rates
+* retries
+* active worker counts
+* lease recovery activity
+
+---
+
+## 11.2 Failure Analysis Report
+
+Displays:
+
+* top failing jobs
+* repeated failures
+* failure frequency
+* error types
+* exhausted retries
+
+---
+
+## 11.3 Worker Health Report
+
+Displays:
+
+* worker uptime
+* worker heartbeat freshness
+* stale workers
+* offline workers
+* lease ownership metrics
+
+---
+
+## 11.4 Job Performance Report
+
+Displays:
+
+* average duration
+* percentile duration
+* slowest jobs
+* retry frequency
+* queue timing metrics
+
+---
+
+## 11.5 Recurring Schedule Report
+
+Displays:
+
+* recurring job schedules
+* next run times
+* missed slots
+* catch-up activity
+* timezone visibility
+
+---
+
+## 11.6 Usage Report
+
+Displays:
+
+* event volume
+* run volume
+* worker counts
+* API usage
+* export usage
+
+---
+
+# 12. Runs Section
+
+The Runs section is intended for operational investigation.
+
+---
+
+## 12.1 Runs Table
+
+Supported filters:
+
+* project
+* environment
+* status
+* job name
+* worker
+* date range
+* duration range
+* error type
+
+Columns:
+
+* run ID
+* job name
+* status
+* attempt
+* queued time
+* started time
+* completed time
+* duration
+* worker
+* retry time
+* error type
+
+---
+
+## 12.2 Run Detail View
+
+Displays:
+
+* lifecycle timeline
+* claim event
+* start event
+* success/failure event
+* retry event
+* worker context
+* attempts history
+* trace IDs
+* span IDs
+* duration
+* error detail
+* raw event payload
+
+---
+
+# 13. Jobs Section
+
+Jobs represent durable job definitions.
+
+Schedules are managed inside jobs.
+
+There is no standalone “Schedules” navigation section.
+
+---
+
+## 13.1 Job List
+
+Displays:
+
+* job name
+* recurring schedule
+* timezone
+* next run
+* last run
+* success rate
+* average duration
+* retry policy
+* status
+
+---
+
+## 13.2 Job Detail
+
+Displays:
+
+* job metadata
+* recurring configuration
+* recent runs
+* recent failures
+* duration trends
+* worker activity
+* related alerts
+
+---
+
+# 14. Workers Section
+
+Workers represent distributed DurableStack execution nodes.
+
+---
+
+## 14.1 Worker List
+
+Displays:
+
+* worker name
+* status
+* last heartbeat
+* active leased runs
+* completed runs today
+* failures today
+* average duration
+* environment
+* runtime version
+
+---
+
+## 14.2 Worker Detail
+
+Displays:
+
+* heartbeat history
+* active leases
+* recent runs
+* failure activity
+* lease extension activity
+* runtime metadata
+
+---
+
+# 15. Alerts System
+
+Users should be able to define operational alerts.
+
+---
+
+## 15.1 Initial Alert Types
+
+* job failed
+* repeated failures
+* retries exhausted
+* worker offline
+* no heartbeat
+* high duration
+* queue depth threshold
+* missed schedule window
+
+---
+
+## 15.2 Alert Delivery
+
+Initial delivery methods:
+
+* email
+* webhook
+* in-app notification
+
+Future:
+
+* Slack
+* Microsoft Teams
+* PagerDuty
+
+---
+
+# 16. Projects Section
+
+Projects represent customer applications or logical systems.
+
+---
+
+## 16.1 Project List
+
+Displays:
+
+* project name
+* environments
+* worker count
+* run volume
+* failure summary
+
+---
+
+## 16.2 Project Detail
+
+Displays:
+
+* environments
+* tenants
+* team members
+* audit log
+* client credentials
+* webhook settings
+* alert settings
+
+---
+
+# 17. Tenant and Environment Management
+
+Each project may contain multiple environments.
+
+Examples:
+
+* Development
+* Staging
+* Production
+
+---
+
+## 17.1 Tenant Features
+
+* tenant ID generation
+* client secret generation
+* client secret rotation
+* client secret revocation
+* last-used tracking
+* environment tagging
+
+---
+
+# 18. Team and Permissions
+
+Initial roles:
+
+* Owner
+* Admin
+* Developer
+* Viewer
+
+Future support may include project-scoped permissions.
+
+---
+
+# 19. Audit Logging
+
+Audit logs should exist at:
+
+* project level
+* organization/account level
+
+Tracked actions include:
+
+* sign-ins
+* member invitations
+* member removals
+* secret generation
+* secret revocation
+* webhook changes
+* alert changes
+* export generation
+* tenant changes
+
+---
+
+# 20. Export System
+
+Supported exports:
+
+* runs CSV
+* failures CSV
+* workers CSV
+* jobs CSV
+* event export
+* audit export
+
+---
+
+# 21. Webhooks
+
+Users should be able to configure outbound webhooks.
+
+Supported event types:
+
+* job_succeeded
+* job_failed
+* retry_scheduled
+* worker_offline
+* worker_recovered
+* alert_triggered
+
+---
+
+# 22. Event Architecture
+
+The hosted app platform is fundamentally event-driven.
+
+The system should be built around DurableStack lifecycle events.
+
+Initial events include:
+
+* job_claimed
+* job_started
+* job_succeeded
+* job_failed
+* retry_scheduled
+* worker_heartbeat
+
+---
+
+# 23. API Design Requirements
+
+The API must support:
+
+* multi-project filtering
+* pagination
+* incremental refresh
+* export operations
+* dashboard widgets
+* report generation
+* mobile responsiveness needs
+* efficient polling
+
+Ingestion policy principle:
+
+* worker payload contracts remain stable
+* tenant options are enforced server-side at ingestion
+* no runtime option-pull dependency is required for worker correctness
+
+---
+
+# 24. UX Requirements
+
+The platform should feel:
+
+* modern
+* lightweight
+* fast
+* operationally focused
+* visually clean
+* highly readable
+
+Avoid:
+
+* cluttered screens
+* overly dense developer tooling UI
+* excessive modal usage
+* hidden operational information
+
+---
+
+# 25. Future Enhancements (Not MVP)
+
+Not included in initial scope:
+
+* billing portal
+* advanced RBAC
+* SSO/SAML
+* workflow visualizations
+* AI-powered operational insights
+* SignalR live push updates
+* mobile native apps
+* drag/drop workflow builders
+* incident management
+* SLA tracking
+* custom report builder
+* dashboard sharing
+* embedded charts
+* white-labeling
+
+---
+
+# 26. MVP Success Criteria
+
+The hosted platform MVP is successful if customers can:
+
+* onboard quickly
+* create projects/environments
+* connect DurableStack workers
+* monitor real-time execution
+* investigate failures
+* understand worker health
+* export operational data
+* configure alerts
+* manage team access
+* prefer the hosted platform over building their own monitoring solution
+
+---
+
+# 27. Relationship to DurableStack Runtime
+
+The hosted platform must never interfere with runtime correctness.
+
+If hosted telemetry upload fails:
+
+* jobs must continue executing
+* retries must continue functioning
+* scheduling must continue functioning
+* worker execution semantics must remain intact
+
+The hosted layer is operational and observational, not execution-critical.
+
+This aligns with the DurableStack hosted sync design goals already established in the runtime build documentation. 

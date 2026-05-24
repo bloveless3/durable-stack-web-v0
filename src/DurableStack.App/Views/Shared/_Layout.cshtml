@@ -32,7 +32,10 @@
                         <span>Search</span>
                         <span class="search-shortcut">Ctrl K</span>
                     </button>
-                    <button type="button" class="avatar-button" aria-label="User menu">DS</button>
+                    <form method="post" asp-controller="Auth" asp-action="SignOutUser" class="inline-flex">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="avatar-button" aria-label="Sign out">Exit</button>
+                    </form>
                 </div>
             </div>
         </header>

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - DurableStack</title>
+    <link rel="stylesheet" href="~/scss/app.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/scss/auth.css" asp-append-version="true" />
+    @await RenderSectionAsync("HeadStyles", required: false)
+</head>
+<body class="auth-body">
+    <main class="auth-shell" role="main">
+        @RenderBody()
+    </main>
+
+    <script src="~/js/pages/auth-page.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

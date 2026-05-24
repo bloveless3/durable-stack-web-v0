@@ -21,6 +21,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    using var scope = app.Services.CreateScope();
+    var controlPlaneDb = scope.ServiceProvider.GetRequiredService<ControlPlaneDbContext>();
+    var telemetryDb = scope.ServiceProvider.GetRequiredService<TelemetryDbContext>();
+    controlPlaneDb.Database.Migrate();
+    telemetryDb.Database.Migrate();
 }
 
 app.UseHttpsRedirection();

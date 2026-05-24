@@ -15,7 +15,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.1" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
   </ItemGroup>
 
@@ -29,8 +34,8 @@
   <Target Name="TailwindBuild"
           BeforeTargets="Build"
           Condition="'$(RunTailwindOnBuild)' == 'true' and Exists('$(MSBuildProjectDirectory)\package.json')">
-    <Message Text="Building Tailwind assets for DurableStack.App" Importance="high" />
-    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="npm run tailwind:build" />
+    <Message Text="Building Tailwind assets for DurableStack.App (app + auth)" Importance="high" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="npm run tailwind:build:all" />
   </Target>
 
 </Project>

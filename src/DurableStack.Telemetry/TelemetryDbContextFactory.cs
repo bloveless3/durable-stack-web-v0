@@ -1,3 +1,4 @@
+using DurableStack.Platform.Contracts.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -7,8 +8,10 @@ public sealed class TelemetryDbContextFactory : IDesignTimeDbContextFactory<Tele
 {
     public TelemetryDbContext CreateDbContext(string[] args)
     {
-        var connectionString = Environment.GetEnvironmentVariable("DURABLESTACK_TELEMETRY_CONNECTION")
-            ?? "Host=localhost;Port=5432;Database=durablestack_telemetry;Username=postgres;Password=postgres";
+        var connectionString = ConnectionStringResolver.Resolve(
+            connectionName: "Telemetry",
+            environmentVariableName: "DURABLESTACK_TELEMETRY_CONNECTION",
+            preferredProjectPaths: ["src/DurableStack.Api"]);
 
         var optionsBuilder = new DbContextOptionsBuilder<TelemetryDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

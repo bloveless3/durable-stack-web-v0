@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body.auth-body {
+    @apply min-h-screen bg-slate-200 text-slate-800;
+    background: linear-gradient(rgba(234, 240, 248, 0.78), rgba(234, 240, 248, 0.78)),
+      radial-gradient(circle at 16% 22%, #c8d8f2 0, transparent 46%),
+      radial-gradient(circle at 84% 18%, #d7e5f6 0, transparent 42%),
+      #e5edf7;
+  }
+}
+
+@layer components {
+  .auth-shell {
+    @apply flex min-h-screen items-center justify-center px-4 py-8;
+  }
+
+  .auth-card {
+    @apply w-full max-w-md rounded-2xl border border-slate-300/70 bg-white/95 px-6 py-7 shadow-xl;
+  }
+
+  .auth-brand {
+    @apply m-0 text-center text-sm font-semibold tracking-wide text-slate-700;
+  }
+
+  .auth-title {
+    @apply mb-2 mt-4 text-center text-4xl font-semibold tracking-tight text-slate-900;
+  }
+
+  .auth-subtitle {
+    @apply mb-5 text-center text-lg text-slate-500;
+  }
+
+  .auth-email-pill {
+    @apply mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-base font-medium text-blue-950;
+  }
+
+  .auth-form {
+    @apply space-y-3;
+  }
+
+  .auth-label {
+    @apply block text-sm font-medium text-slate-600;
+  }
+
+  .auth-input {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-xl text-slate-900 outline-none transition-shadow focus:border-blue-600 focus:ring-2 focus:ring-blue-300;
+  }
+
+  .auth-primary {
+    @apply w-full rounded-xl bg-blue-600 px-4 py-3 text-xl font-semibold text-white transition-colors hover:bg-blue-700;
+  }
+
+  .auth-secondary {
+    @apply mt-2 block w-full rounded-xl border border-blue-600 px-4 py-3 text-center text-xl font-medium text-blue-700 transition-colors hover:bg-blue-50;
+  }
+
+  .auth-validation {
+    @apply text-sm text-red-600;
+  }
+
+  .auth-help {
+    @apply m-0 text-sm text-slate-500;
+  }
+
+  .auth-checkbox-row {
+    @apply flex items-start gap-2 text-sm text-slate-600;
+  }
+
+  .auth-checkbox-row input {
+    @apply mt-1;
+  }
+
+  .auth-grid-two {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .auth-footer {
+    @apply mb-0 mt-5 text-center text-sm text-slate-400;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-card {
+    @apply px-4 py-5;
+  }
+
+  .auth-title {
+    @apply text-3xl;
+  }
+
+  .auth-subtitle {
+    @apply text-base;
+  }
+
+  .auth-input,
+  .auth-primary,
+  .auth-secondary {
+    @apply text-lg;
+  }
+
+  .auth-grid-two {
+    @apply grid-cols-1;
+  }
+}

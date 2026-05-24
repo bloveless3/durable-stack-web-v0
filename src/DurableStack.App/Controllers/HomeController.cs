@@ -2,9 +2,11 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using DurableStack.App.Models;
 using DurableStack.App.Services.Api;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DurableStack.App.Controllers;
 
+[Authorize]
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;

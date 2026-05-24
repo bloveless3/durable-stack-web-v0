@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "tailwind:build": "tailwindcss -i ./wwwroot/scss/app.scss -o ./wwwroot/scss/app.css --minify",
-    "tailwind:watch": "tailwindcss -i ./wwwroot/scss/app.scss -o ./wwwroot/scss/app.css --watch"
+    "tailwind:build:auth": "tailwindcss -i ./wwwroot/scss/auth.scss -o ./wwwroot/scss/auth.css --minify",
+    "tailwind:build:all": "npm run tailwind:build && npm run tailwind:build:auth",
+    "tailwind:watch": "tailwindcss -i ./wwwroot/scss/app.scss -o ./wwwroot/scss/app.css --watch",
+    "tailwind:watch:auth": "tailwindcss -i ./wwwroot/scss/auth.scss -o ./wwwroot/scss/auth.css --watch"
   },
   "keywords": [],
   "author": "",

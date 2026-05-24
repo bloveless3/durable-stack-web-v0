@@ -1,0 +1,32 @@
+@model DurableStack.App.Models.Auth.AuthSignInViewModel
+@{
+    ViewData["Title"] = "Sign in";
+    Layout = "_AuthLayout";
+}
+
+<section class="auth-card" aria-label="Sign in">
+    <p class="auth-brand">DurableStack</p>
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-subtitle">This email already has an account. Continue to sign in.</p>
+
+    <div class="auth-email-pill">@Model.Email</div>
+
+    <form method="post" asp-controller="Auth" asp-action="SignIn" class="auth-form" novalidate>
+        @Html.AntiForgeryToken()
+        <input asp-for="Email" type="hidden" />
+        <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
+
+        <label asp-for="Password" class="auth-label"></label>
+        <input asp-for="Password" class="auth-input" autocomplete="current-password" autofocus />
+        <span asp-validation-for="Password" class="auth-validation"></span>
+
+        <button type="submit" class="auth-primary">Sign in</button>
+    </form>
+
+    <a asp-controller="Auth" asp-action="Index" class="auth-secondary">Use a different email</a>
+    <p class="auth-footer">&copy; 2026 DurableStack</p>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
