@@ -6,42 +6,42 @@
   :root {
     --header-height: 3.75rem;
     --sidebar-width: 272px;
-    --surface-base: #f3f8fa;
-    --surface-main: #ebf3f7;
+    --surface-base: #f4f6f5;
+    --surface-main: #eef2ef;
     --header-bg: #ffffff;
-    --header-border: #d6e0e7;
-    --header-ink: #17252f;
-    --sidebar-bg: #225959;
-    --sidebar-border: #2f7e7d;
-    --sidebar-label: #d8f0ef;
-    --sidebar-link: #effbfb;
-    --sidebar-link-hover-bg: #2f8084;
-    --sidebar-link-active-bg: #4f86c6;
-    --sidebar-link-active-ink: #f4f9ff;
-    --content-ink: #13222d;
+    --header-border: #d8e0da;
+    --header-ink: #1b1f1d;
+    --sidebar-bg: #11251d;
+    --sidebar-border: #1e3c30;
+    --sidebar-label: #9ecab1;
+    --sidebar-link: #e6f2eb;
+    --sidebar-link-hover-bg: #14b8a6;
+    --sidebar-link-active-bg: #2ecc71;
+    --sidebar-link-active-ink: #0f1d17;
+    --content-ink: #1b1f1d;
     --card-bg: #ffffff;
-    --card-border: #cbdce6;
-    --muted-ink: #4a6678;
+    --card-border: #d8e0da;
+    --muted-ink: #6b756f;
     --overlay-bg: rgba(15, 20, 12, 0.45);
   }
 
   :root[data-theme="dark"] {
-    --surface-base: #0d1218;
-    --surface-main: #111b24;
-    --header-bg: #0b0d12;
-    --header-border: #27374a;
-    --header-ink: #e2eef7;
-    --sidebar-bg: #225959;
-    --sidebar-border: #2a7a80;
-    --sidebar-label: #b9e0e3;
-    --sidebar-link: #dff3f4;
-    --sidebar-link-hover-bg: #2f737b;
-    --sidebar-link-active-bg: #744fc6;
-    --sidebar-link-active-ink: #f4efff;
-    --content-ink: #e3edf7;
-    --card-bg: #162433;
-    --card-border: #2d4861;
-    --muted-ink: #9fbad0;
+    --surface-base: #111714;
+    --surface-main: #161f1b;
+    --header-bg: #0b0e0d;
+    --header-border: #2c3832;
+    --header-ink: #e6eee9;
+    --sidebar-bg: #0d1a14;
+    --sidebar-border: #1f342a;
+    --sidebar-label: #8fb8a0;
+    --sidebar-link: #d9ede2;
+    --sidebar-link-hover-bg: #0f9386;
+    --sidebar-link-active-bg: #77da9e;
+    --sidebar-link-active-ink: #0f2018;
+    --content-ink: #e4ece7;
+    --card-bg: #1b2621;
+    --card-border: #2f4137;
+    --muted-ink: #a1afa7;
     --overlay-bg: rgba(0, 0, 0, 0.62);
   }
 
