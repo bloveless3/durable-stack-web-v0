@@ -23,7 +23,7 @@
         }
         else
         {
-            <a class="sidebar-link @(isGroupActive ? "is-active" : string.Empty)" href="@item.Url" data-menu-key="@item.Key">
+            <a class="sidebar-link @(isGroupActive ? "is-active" : string.Empty)" href="@item.Url" data-menu-key="@item.Key" aria-current="@(isGroupActive ? "page" : null)">
                 @if (!string.IsNullOrWhiteSpace(item.IconClass))
                 {
                     <i class="@item.IconClass sidebar-link-icon" aria-hidden="true"></i>
@@ -38,7 +38,7 @@
                 @foreach (var child in item.Children)
                 {
                     var childIsActive = string.Equals(Model.ActiveKey, child.Key, StringComparison.OrdinalIgnoreCase);
-                    <a class="sidebar-sublink @(childIsActive ? "is-active" : string.Empty)" href="@child.Url" data-menu-key="@child.Key">@child.Title</a>
+                    <a class="sidebar-sublink @(childIsActive ? "is-active" : string.Empty)" href="@child.Url" data-menu-key="@child.Key" aria-current="@(childIsActive ? "page" : null)">@child.Title</a>
                 }
             </div>
         }

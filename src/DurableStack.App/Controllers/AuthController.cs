@@ -171,6 +171,18 @@ public sealed class AuthController : Controller
             return View(model);
         }
 
+        var addViewerRole = await _userManager.AddToRoleAsync(appUser, DurableStack.App.Menu.AppRoles.Viewer);
+        if (!addViewerRole.Succeeded)
+        {
+            foreach (var error in addViewerRole.Errors)
+            {
+                ModelState.AddModelError(string.Empty, error.Description);
+            }
+
+            await _userManager.DeleteAsync(appUser);
+            return View(model);
+        }
+
         await _signInManager.SignInAsync(appUser, isPersistent: true);
 
         return RedirectToAction("Index", "Home");

@@ -148,6 +148,19 @@
 
   .sidebar-link-toggle {
     @apply w-full justify-between border-0 bg-transparent text-left;
+    appearance: none;
+  }
+
+  .sidebar-link-toggle:focus-visible,
+  .sidebar-link:focus-visible,
+  .sidebar-sublink:focus-visible,
+  .sidebar-profile-avatar:focus-visible,
+  .sidebar-profile-name:focus-visible,
+  .sidebar-profile-email:focus-visible,
+  .sidebar-profile-link:focus-visible,
+  .sidebar-profile-signout-button:focus-visible {
+    @apply outline-none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sidebar-link-active-bg) 65%, #ffffff 35%);
   }
 
   .sidebar-link-main {
@@ -399,7 +412,38 @@
   }
 
   .app-page-controls {
-    @apply flex items-center justify-start gap-2;
+    @apply flex flex-col items-stretch justify-start gap-2;
+  }
+
+  .app-global-filters {
+    @apply mt-2 grid grid-cols-2 gap-2;
+  }
+
+  .app-global-filter-field {
+    @apply flex min-w-0 flex-col gap-1;
+  }
+
+  .app-global-filter-field span {
+    @apply text-[0.62rem] font-semibold uppercase tracking-[0.08em];
+    color: var(--muted-ink);
+  }
+
+  .app-global-filter-field select {
+    @apply h-8 rounded-md border px-2 text-xs;
+    border-color: var(--card-border);
+    background: color-mix(in srgb, var(--card-bg) 92%, var(--surface-main) 8%);
+    color: var(--content-ink);
+  }
+
+  .app-page-controls > .app-page-control-group,
+  .app-page-controls > .app-page-control-button,
+  .app-page-controls > .app-tooltip {
+    @apply self-end;
+  }
+
+  .app-global-filter-field select:focus-visible {
+    @apply outline-none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sidebar-link-active-bg) 50%, #ffffff 50%);
   }
 
   .app-page-control-group {
@@ -419,6 +463,69 @@
 
   .app-page-control-button:active {
     background: color-mix(in srgb, var(--card-bg) 70%, var(--sidebar-link-hover-bg) 30%);
+  }
+
+  .page-state {
+    @apply mt-3 flex items-start gap-3 rounded-xl border p-4;
+    border-color: var(--card-border);
+    background: var(--card-bg);
+    color: var(--content-ink);
+  }
+
+  .page-state-icon {
+    @apply mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full;
+    background: color-mix(in srgb, var(--surface-main) 74%, #ffffff 26%);
+  }
+
+  .page-state-content {
+    @apply min-w-0;
+  }
+
+  .page-state-title {
+    @apply m-0 text-base font-semibold;
+  }
+
+  .page-state-message {
+    @apply mb-0 mt-1 text-sm;
+    color: var(--muted-ink);
+  }
+
+  .page-state-action {
+    @apply mt-2 inline-flex rounded-md border px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.08em];
+    border-color: var(--card-border);
+    color: var(--content-ink);
+    background: color-mix(in srgb, var(--card-bg) 90%, var(--surface-main) 10%);
+  }
+
+  .page-state-loading .page-state-icon,
+  .page-state-info .page-state-icon {
+    color: #0ea5a4;
+  }
+
+  .page-state-empty .page-state-icon {
+    color: #14b8a6;
+  }
+
+  .page-state-error .page-state-icon {
+    color: #dc2626;
+  }
+
+  .page-state-no-access .page-state-icon {
+    color: #d97706;
+  }
+
+  [data-page-state-spinner] {
+    animation: page-state-spin 900ms linear infinite;
+  }
+
+  @keyframes page-state-spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .app-page-control-label {
@@ -615,7 +722,11 @@
     }
 
     .app-page-controls {
-      @apply justify-end;
+      @apply flex-row items-end justify-end;
+    }
+
+    .app-global-filters {
+      @apply mt-0 flex items-end;
     }
 
     .metrics-grid {

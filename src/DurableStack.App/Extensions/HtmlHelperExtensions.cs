@@ -11,6 +11,7 @@ public static class HtmlHelperExtensions
     private const string TitlePartsKey = "DurableStack.TitleParts";
     private const string ActiveMenuKey = "DurableStack.ActiveMenuKey";
     private const string BreadcrumbPartsKey = "DurableStack.BreadcrumbParts";
+    private const string ShowGlobalFiltersKey = "DurableStack.ShowGlobalFilters";
     private const string AppName = "DurableStack";
 
     public static void AddTitleParts(this IHtmlHelper html, params string[] parts)
@@ -85,7 +86,7 @@ public static class HtmlHelperExtensions
         ArgumentNullException.ThrowIfNull(html);
 
         var provider = html.ViewContext.HttpContext.RequestServices.GetService(typeof(IAppMenuProvider)) as IAppMenuProvider;
-        var items = provider?.GetMenu() ?? Array.Empty<AppMenuItem>();
+        var items = provider?.GetMenu(html.ViewContext.HttpContext.User) ?? Array.Empty<AppMenuItem>();
 
         return new AppMenuViewModel
         {
@@ -116,6 +117,24 @@ public static class HtmlHelperExtensions
         ArgumentNullException.ThrowIfNull(html);
 
         return GetOrCreateBreadcrumbParts(html).ToList();
+    }
+
+    public static void SetShowGlobalFilters(this IHtmlHelper html, bool show)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+        html.ViewContext.HttpContext.Items[ShowGlobalFiltersKey] = show;
+    }
+
+    public static bool GetShowGlobalFilters(this IHtmlHelper html)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+
+        if (html.ViewContext.HttpContext.Items.TryGetValue(ShowGlobalFiltersKey, out var value) && value is bool parsed)
+        {
+            return parsed;
+        }
+
+        return false;
     }
 
     private static IList<string> GetOrCreateTitleParts(IHtmlHelper html)

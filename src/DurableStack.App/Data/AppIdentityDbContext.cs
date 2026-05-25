@@ -6,6 +6,8 @@ namespace DurableStack.App.Data;
 
 public sealed class AppIdentityDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
+    public DbSet<UserAttribute> UserAttributes => Set<UserAttribute>();
+
     public AppIdentityDbContext(DbContextOptions<AppIdentityDbContext> options)
         : base(options)
     {
@@ -24,6 +26,20 @@ public sealed class AppIdentityDbContext : IdentityDbContext<ApplicationUser, Id
             entity.Property(x => x.NormalizedUserName).HasMaxLength(320);
             entity.Property(x => x.DisplayName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.CreatedAtUtc).IsRequired();
+        });
+
+        builder.Entity<UserAttribute>(entity =>
+        {
+            entity.ToTable("app_user_attributes");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Key).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Value).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).IsRequired();
+            entity.HasIndex(x => new { x.UserId, x.Key }).IsUnique();
+            entity.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<IdentityRole<Guid>>(entity => entity.ToTable("app_roles"));

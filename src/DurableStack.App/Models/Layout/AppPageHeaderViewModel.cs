@@ -8,5 +8,9 @@ public sealed class AppPageHeaderViewModel
 
     public IReadOnlyList<AppBreadcrumbPart> Breadcrumbs { get; init; } = Array.Empty<AppBreadcrumbPart>();
 
+    public bool ShowGlobalFilters { get; init; } = true;
+
+    public GlobalFilterViewModel GlobalFilters { get; init; } = new();
+
     public IHtmlContent? PageControls { get; init; }
 }

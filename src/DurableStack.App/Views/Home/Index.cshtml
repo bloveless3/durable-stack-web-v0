@@ -2,11 +2,13 @@
 @{
     Html.AddTitleParts("Dashboard");
     Html.SetActiveMenuItem(AppMenuKeys.Dashboard);
+    Html.SetShowGlobalFilters(true);
 
     //Html.AddBreadcrumbsPart("Reports", "/reports");
     //Html.AddBreadcrumbsPart("Worker Health");
 }
 
+@*
 @section PageControls {
     <span class="app-tooltip app-tooltip-left" data-dashboard-refresh-tooltip data-tip="Last load --">
         <button type="button" class="app-page-control-button app-page-control-button-icon" data-dashboard-refresh aria-label="Refresh dashboard data">
@@ -14,6 +16,7 @@
         </button>
     </span>
 }
+*@
 
 <section class="metrics-grid" aria-label="Health metrics">
     <article class="metric-card">

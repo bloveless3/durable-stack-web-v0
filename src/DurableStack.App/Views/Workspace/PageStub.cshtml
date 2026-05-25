@@ -2,8 +2,18 @@
 @{
     Html.AddTitleParts(Model.Title);
     Html.SetActiveMenuItem(Model.MenuKey);
+    Html.SetShowGlobalFilters(false);
     Html.AddBreadcrumbsPart("Workspace", "/");
     Html.AddBreadcrumbsPart(Model.Title);
+
+    var pageStateModel = new DurableStack.App.Models.Layout.PageStateViewModel
+    {
+        Type = "empty",
+        Title = "No data yet",
+        Message = "This section is scaffolded and ready for real data wiring.",
+        ActionText = "Go to Dashboard",
+        ActionUrl = "/"
+    };
 }
 
 <section class="panel-card">
@@ -13,3 +23,5 @@
     </header>
     <p>@Model.Description</p>
 </section>
+
+<partial name="_PageState" model="pageStateModel" />

@@ -1,5 +1,6 @@
 ﻿@using DurableStack.App.Services.Identity
 @inject ICurrentUserContext CurrentUserContext
+@inject DurableStack.App.Services.Preferences.IUserPreferenceService UserPreferenceService
 @{
     var currentUserName = CurrentUserContext.DisplayName;
     if (string.IsNullOrWhiteSpace(currentUserName) && !string.IsNullOrWhiteSpace(CurrentUserContext.Email))
@@ -127,10 +128,26 @@
                         pageControls = new Microsoft.AspNetCore.Html.HtmlString(controlsWriter.ToString());
                     }
 
+                    var globalFilterValues = await UserPreferenceService.GetValuesAsync(new[]
+                    {
+                        "global.filter.organization",
+                        "global.filter.project",
+                        "global.filter.environment",
+                        "global.filter.timeRange"
+                    });
+
                     var pageHeaderModel = new DurableStack.App.Models.Layout.AppPageHeaderViewModel
                     {
                         Title = Html.GetCurrentPageTitle(),
                         Breadcrumbs = Html.GetBreadcrumbsParts(),
+                        ShowGlobalFilters = Html.GetShowGlobalFilters(),
+                        GlobalFilters = new DurableStack.App.Models.Layout.GlobalFilterViewModel
+                        {
+                            Organization = globalFilterValues.TryGetValue("global.filter.organization", out var organization) ? organization : "all-organizations",
+                            Project = globalFilterValues.TryGetValue("global.filter.project", out var project) ? project : "all-projects",
+                            Environment = globalFilterValues.TryGetValue("global.filter.environment", out var environment) ? environment : "all-environments",
+                            TimeRange = globalFilterValues.TryGetValue("global.filter.timeRange", out var timeRange) ? timeRange : "24h"
+                        },
                         PageControls = pageControls
                     };
                 }
@@ -148,6 +165,8 @@
             <span>Operational Visibility for Durable Jobs</span>
         </footer>
     </div>
+    <script src="~/js/layout/preference-client.js" asp-append-version="true"></script>
+    <script src="~/js/layout/global-filters.js" asp-append-version="true"></script>
     <script src="~/js/layout/toast-center.js" asp-append-version="true"></script>
     <script src="~/js/layout/app-shell.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

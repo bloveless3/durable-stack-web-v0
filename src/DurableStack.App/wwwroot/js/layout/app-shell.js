@@ -132,6 +132,18 @@
 
       setGroupExpanded(group, nextState);
     });
+
+    trigger.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setGroupExpanded(group, true);
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setGroupExpanded(group, false);
+      }
+    });
   });
 
   navLinks.forEach(function (link) {

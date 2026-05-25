@@ -10,5 +10,7 @@ public sealed class AppMenuItem
 
     public string? IconClass { get; init; }
 
+    public IReadOnlyList<string> AllowedRoles { get; init; } = Array.Empty<string>();
+
     public IReadOnlyList<AppMenuItem> Children { get; init; } = Array.Empty<AppMenuItem>();
 }

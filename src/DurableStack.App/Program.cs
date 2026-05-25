@@ -3,6 +3,7 @@ using DurableStack.App.Services.Api;
 using DurableStack.App.Data;
 using DurableStack.App.Services.Identity;
 using DurableStack.App.Menu;
+using DurableStack.App.Services.Preferences;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -18,6 +19,7 @@ builder.Services.Configure<MvcViewOptions>(options =>
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
 builder.Services.AddSingleton<IAppMenuProvider, AppMenuProvider>();
 builder.Services.AddControlPlanePostgres(builder.Configuration);
 builder.Services.AddDbContext<AppIdentityDbContext>(options =>
@@ -85,6 +87,31 @@ if (app.Environment.IsDevelopment())
         {
             var errors = string.Join("; ", createResult.Errors.Select(x => x.Description));
             throw new InvalidOperationException($"Failed to create default admin user: {errors}");
+        }
+    }
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    foreach (var roleName in AppRoles.All)
+    {
+        if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult())
+        {
+            var createRole = roleManager.CreateAsync(new IdentityRole<Guid>(roleName)).GetAwaiter().GetResult();
+            if (!createRole.Succeeded)
+            {
+                var errors = string.Join("; ", createRole.Errors.Select(x => x.Description));
+                throw new InvalidOperationException($"Failed to create role '{roleName}': {errors}");
+            }
+        }
+    }
+
+    var adminRoles = userManager.GetRolesAsync(adminUser).GetAwaiter().GetResult();
+    if (!adminRoles.Contains(AppRoles.Admin, StringComparer.OrdinalIgnoreCase))
+    {
+        var addRoleResult = userManager.AddToRoleAsync(adminUser, AppRoles.Admin).GetAwaiter().GetResult();
+        if (!addRoleResult.Succeeded)
+        {
+            var errors = string.Join("; ", addRoleResult.Errors.Select(x => x.Description));
+            throw new InvalidOperationException($"Failed to assign '{AppRoles.Admin}' role to default admin: {errors}");
         }
     }
 }

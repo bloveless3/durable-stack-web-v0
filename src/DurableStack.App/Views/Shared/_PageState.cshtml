@@ -1,0 +1,43 @@
+@model DurableStack.App.Models.Layout.PageStateViewModel
+
+@{
+    var stateType = Model.Type?.Trim().ToLowerInvariant() switch
+    {
+        "loading" => "loading",
+        "empty" => "empty",
+        "error" => "error",
+        "no-access" => "no-access",
+        _ => "info"
+    };
+}
+
+<section class="page-state page-state-@stateType" role="status" aria-live="polite">
+    <div class="page-state-icon" aria-hidden="true">
+        @switch (stateType)
+        {
+            case "loading":
+                <i class="fa-solid fa-spinner" data-page-state-spinner></i>
+                break;
+            case "empty":
+                <i class="fa-regular fa-folder-open"></i>
+                break;
+            case "error":
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                break;
+            case "no-access":
+                <i class="fa-solid fa-lock"></i>
+                break;
+            default:
+                <i class="fa-solid fa-circle-info"></i>
+                break;
+        }
+    </div>
+    <div class="page-state-content">
+        <h2 class="page-state-title">@Model.Title</h2>
+        <p class="page-state-message">@Model.Message</p>
+        @if (!string.IsNullOrWhiteSpace(Model.ActionText) && !string.IsNullOrWhiteSpace(Model.ActionUrl))
+        {
+            <a href="@Model.ActionUrl" class="page-state-action">@Model.ActionText</a>
+        }
+    </div>
+</section>
