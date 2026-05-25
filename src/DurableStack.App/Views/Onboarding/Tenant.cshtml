@@ -1,0 +1,22 @@
+@{
+    Html.AddTitleParts("Onboarding");
+    Layout = "_AuthLayout";
+}
+
+<section class="auth-card" aria-label="Onboarding Tenant Provisioning">
+    <p class="auth-brand">DurableStack</p>
+    <h1 class="auth-title">Provision your tenant access</h1>
+    <p class="auth-subtitle">Step 3 of 4. We will create your tenant ID and a secure client secret.</p>
+
+    <form method="post" asp-controller="Onboarding" asp-action="TenantProvision" class="auth-form" novalidate>
+        @Html.AntiForgeryToken()
+
+        <div class="auth-help">
+            This creates a default Development tenant with secure ingestion credentials.
+        </div>
+
+        <button type="submit" class="auth-primary auth-primary-spaced">Provision tenant and continue</button>
+    </form>
+
+    <p class="auth-footer">Step 4 will show your credentials once</p>
+</section>

@@ -1,0 +1,30 @@
+@model DurableStack.App.Models.Onboarding.OnboardingProjectViewModel
+@{
+    Html.AddTitleParts("Onboarding");
+    Layout = "_AuthLayout";
+}
+
+<section class="auth-card" aria-label="Onboarding Project Setup">
+    <p class="auth-brand">DurableStack</p>
+    <h1 class="auth-title">Set up your first project</h1>
+    <p class="auth-subtitle">Step 2 of 4. Give your project a clear name so your team can find it later.</p>
+
+    <form method="post" asp-controller="Onboarding" asp-action="Project" class="auth-form" novalidate>
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
+
+        <div class="auth-field">
+            <label asp-for="ProjectName" class="auth-label"></label>
+            <input asp-for="ProjectName" class="auth-input" autocomplete="organization-title" autofocus />
+            <span asp-validation-for="ProjectName" class="auth-validation"></span>
+        </div>
+
+        <button type="submit" class="auth-primary auth-primary-spaced">Continue to tenant setup</button>
+    </form>
+
+    <p class="auth-footer">Step 3 will provision tenant access</p>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

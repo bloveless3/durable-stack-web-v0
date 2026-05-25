@@ -2,6 +2,7 @@ using DurableStack.ControlPlane.DependencyInjection;
 using DurableStack.App.Services.Api;
 using DurableStack.App.Data;
 using DurableStack.App.Services.Identity;
+using DurableStack.App.Services.Onboarding;
 using DurableStack.App.Menu;
 using DurableStack.App.Services.Preferences;
 using Microsoft.AspNetCore.Identity;
@@ -29,6 +30,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+builder.Services.AddScoped<IOnboardingService, OnboardingService>();
 builder.Services.AddSingleton<IAppMenuProvider, AppMenuProvider>();
 builder.Services.AddControlPlanePostgres(builder.Configuration);
 builder.Services.AddDbContext<AppIdentityDbContext>(options =>

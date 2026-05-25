@@ -5,13 +5,15 @@
     var sidebarCompactPreference = await UserPreferenceService.GetValueAsync(DurableStack.App.Services.Preferences.PreferenceKeys.UiSidebarCompact);
     var initialSidebarCompact = string.Equals(sidebarCompactPreference, "true", StringComparison.OrdinalIgnoreCase);
 
-    var currentUserName = CurrentUserContext.DisplayName;
-    if (string.IsNullOrWhiteSpace(currentUserName) && !string.IsNullOrWhiteSpace(CurrentUserContext.Email))
+    var currentUser = await CurrentUserContext.GetUserAsync();
+
+    var currentUserName = currentUser?.DisplayName;
+    if (string.IsNullOrWhiteSpace(currentUserName) && !string.IsNullOrWhiteSpace(CurrentUserContext.DisplayName))
     {
-        currentUserName = CurrentUserContext.Email;
+        currentUserName = CurrentUserContext.DisplayName;
     }
 
-    var currentUserEmail = CurrentUserContext.Email ?? "";
+    var currentUserEmail = currentUser?.Email ?? CurrentUserContext.Email ?? "";
     var userPrimaryLine = "DurableStack User";
     string? userSecondaryLine = null;
 

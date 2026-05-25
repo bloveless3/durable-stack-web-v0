@@ -1,0 +1,88 @@
+@model DurableStack.App.Models.Onboarding.OnboardingOrganizationViewModel
+@{
+    Html.AddTitleParts("Onboarding");
+    Layout = "_AuthLayout";
+    var justRegistered = (bool?)ViewData["JustRegistered"] ?? false;
+}
+
+<section class="auth-card" aria-label="Onboarding">
+    @if (justRegistered)
+    {
+        <div class="auth-success-callout auth-success-callout-top" role="status" aria-live="polite">
+            <p class="auth-success-title">Account created successfully</p>
+            <p class="auth-success-body">You are signed in and ready to finish setup.</p>
+        </div>
+    }
+
+    <div class="auth-onboarding-head">
+        <p class="auth-brand auth-brand-onboarding">DurableStack</p>
+
+        <div class="auth-steps auth-steps-onboarding" aria-label="Onboarding progress">
+            <span class="auth-step auth-step-active">1</span>
+            <span class="auth-step">2</span>
+            <span class="auth-step">3</span>
+            <span class="auth-step">4</span>
+        </div>
+
+        <h1 class="auth-title auth-title-onboarding">Complete your onboarding to get started</h1>
+    </div>
+    <p class="auth-subtitle">Step 1 of 4. Tell us whether this account is for a company or personal work.</p>
+
+    <form method="post" asp-controller="Onboarding" asp-action="Index" class="auth-form" novalidate>
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
+
+        <div class="auth-field">
+            <label asp-for="IsCompanyRegistration" class="auth-label"></label>
+            <select asp-for="IsCompanyRegistration" class="auth-input" autofocus>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </div>
+
+        <div class="auth-field" data-company-name-field>
+            <label asp-for="OrganizationName" class="auth-label"></label>
+            <input asp-for="OrganizationName" class="auth-input" autocomplete="organization" />
+            <span asp-validation-for="OrganizationName" class="auth-validation"></span>
+        </div>
+
+        <div class="auth-field" data-personal-name-field hidden>
+            <label class="auth-label">Workspace name</label>
+            <p class="auth-help"><em>@Model.PersonalDisplayName</em></p>
+        </div>
+
+        <button type="submit" class="auth-primary auth-primary-spaced">Continue to project setup</button>
+    </form>
+
+    <p class="auth-footer">Step 2 creates your first project</p>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const registrationType = document.getElementById("IsCompanyRegistration");
+            const companyField = document.querySelector("[data-company-name-field]");
+            const personalField = document.querySelector("[data-personal-name-field]");
+
+            if (!registrationType || !companyField || !personalField) {
+                return;
+            }
+
+            const organizationNameInput = document.getElementById("OrganizationName");
+
+            const syncMode = () => {
+                const isCompany = registrationType.value === "true";
+                companyField.hidden = !isCompany;
+                personalField.hidden = isCompany;
+
+                if (!isCompany && organizationNameInput) {
+                    organizationNameInput.value = "";
+                }
+            };
+
+            registrationType.addEventListener("change", syncMode);
+            syncMode();
+        })();
+    </script>
+}

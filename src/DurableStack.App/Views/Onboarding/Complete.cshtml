@@ -1,0 +1,70 @@
+@model DurableStack.App.Models.Onboarding.OnboardingCompleteViewModel
+@{
+    Html.AddTitleParts("Onboarding");
+    Layout = "_AuthLayout";
+}
+
+<section class="auth-card" aria-label="Onboarding Complete">
+    <p class="auth-brand">DurableStack</p>
+    <h1 class="auth-title">You are ready to go</h1>
+    <p class="auth-subtitle">Step 4 of 4. Save this secret now. You will not be able to view it again.</p>
+
+    <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
+
+    <div class="auth-form">
+        <div class="auth-field">
+            <label class="auth-label">Tenant ID</label>
+            <div class="auth-email-pill">@Model.TenantId</div>
+        </div>
+
+        <div class="auth-field">
+            <label class="auth-label">Environment</label>
+            <div class="auth-email-pill">@Model.EnvironmentName</div>
+        </div>
+
+        <div class="auth-field">
+            <label class="auth-label">Client secret</label>
+            <div class="auth-email-pill" style="word-break: break-all;" data-client-secret-value>@Model.ClientSecret</div>
+            <button type="button" class="auth-secondary" data-copy-client-secret>Copy client secret</button>
+            <p class="auth-help" data-copy-client-secret-status aria-live="polite"></p>
+        </div>
+
+        <form method="post" asp-controller="Onboarding" asp-action="CompleteConfirmed" novalidate>
+            @Html.AntiForgeryToken()
+            <label class="auth-checkbox-row">
+                <input type="checkbox" name="savedClientSecret" value="true" />
+                <span>I saved this client secret securely.</span>
+            </label>
+            <button type="submit" class="auth-primary auth-primary-spaced">Open dashboard</button>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <script>
+        (function () {
+            const copyButton = document.querySelector("[data-copy-client-secret]");
+            const secretElement = document.querySelector("[data-client-secret-value]");
+            const statusElement = document.querySelector("[data-copy-client-secret-status]");
+
+            if (!copyButton || !secretElement || !statusElement) {
+                return;
+            }
+
+            copyButton.addEventListener("click", async () => {
+                const secret = secretElement.textContent?.trim() ?? "";
+                if (!secret) {
+                    statusElement.textContent = "Client secret is not available to copy.";
+                    return;
+                }
+
+                try {
+                    await navigator.clipboard.writeText(secret);
+                    statusElement.textContent = "Client secret copied.";
+                } catch {
+                    statusElement.textContent = "Unable to copy automatically. Please copy manually.";
+                }
+            });
+        })();
+    </script>
+}

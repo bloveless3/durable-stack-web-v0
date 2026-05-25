@@ -5,6 +5,7 @@ using DurableStack.App.Services.Api;
 using Microsoft.AspNetCore.Authorization;
 using DurableStack.App.Extensions;
 using DurableStack.App.Services.Identity;
+using DurableStack.App.Services.Onboarding;
 
 namespace DurableStack.App.Controllers;
 
@@ -15,21 +16,39 @@ public class HomeController : Controller
     private readonly DurableStackApiClient _apiClient;
     private readonly DurableStackApiOptions _apiOptions;
     private readonly ICurrentUserContext _currentUserContext;
+    private readonly IOnboardingService _onboardingService;
 
     public HomeController(
         ILogger<HomeController> logger,
         DurableStackApiClient apiClient,
         Microsoft.Extensions.Options.IOptions<DurableStackApiOptions> apiOptions,
-        ICurrentUserContext currentUserContext)
+        ICurrentUserContext currentUserContext,
+        IOnboardingService onboardingService)
     {
         _logger = logger;
         _apiClient = apiClient;
         _apiOptions = apiOptions.Value;
         _currentUserContext = currentUserContext;
+        _onboardingService = onboardingService;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
+        if (!await _onboardingService.HasOrganizationAsync(cancellationToken))
+        {
+            return RedirectToAction("Index", "Onboarding");
+        }
+
+        if (!await _onboardingService.HasProjectAsync(cancellationToken))
+        {
+            return RedirectToAction("Project", "Onboarding");
+        }
+
+        if (!await _onboardingService.HasTenantAsync(cancellationToken))
+        {
+            return RedirectToAction("Tenant", "Onboarding");
+        }
+
         var model = new AppHomeViewModel
         {
             TenantId = string.IsNullOrWhiteSpace(_apiOptions.TenantId)

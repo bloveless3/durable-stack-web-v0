@@ -235,8 +235,9 @@ public sealed class AuthController : Controller
         }
 
         await _signInManager.SignInAsync(appUser, isPersistent: true);
+        TempData["Onboarding.JustRegistered"] = "true";
 
-        return RedirectToLocalOrHome(returnUrl);
+        return RedirectToAction("Index", "Onboarding");
     }
 
     [Authorize]
