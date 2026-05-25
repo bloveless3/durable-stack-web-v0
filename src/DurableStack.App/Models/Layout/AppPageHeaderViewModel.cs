@@ -6,7 +6,7 @@ public sealed class AppPageHeaderViewModel
 {
     public string Title { get; init; } = "DurableStack";
 
-    public IReadOnlyList<string> Breadcrumbs { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<AppBreadcrumbPart> Breadcrumbs { get; init; } = Array.Empty<AppBreadcrumbPart>();
 
     public IHtmlContent? PageControls { get; init; }
 }

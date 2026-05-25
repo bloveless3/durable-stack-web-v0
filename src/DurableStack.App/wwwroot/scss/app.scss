@@ -123,7 +123,7 @@
   }
 
   .sidebar-nav {
-    @apply flex flex-col gap-1;
+    @apply flex flex-col gap-1 mb-6;
   }
 
   .sidebar-nav-group {
@@ -369,6 +369,14 @@
     color: var(--muted-ink);
   }
 
+  .app-breadcrumb-home {
+    @apply inline-flex items-center justify-center rounded-sm p-0.5;
+  }
+
+  .app-breadcrumb-home i {
+    @apply text-[0.75rem];
+  }
+
   .app-breadcrumbs a {
     @apply transition-opacity;
     opacity: 0.9;
@@ -376,6 +384,7 @@
 
   .app-breadcrumbs a:hover {
     opacity: 1;
+    color: var(--sidebar-bg);
   }
 
   .app-page-title {

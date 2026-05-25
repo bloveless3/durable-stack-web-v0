@@ -2,6 +2,8 @@
 @{
     Html.AddTitleParts(Model.Title);
     Html.SetActiveMenuItem(Model.MenuKey);
+    Html.AddBreadcrumbsPart("Workspace", "/");
+    Html.AddBreadcrumbsPart(Model.Title);
 }
 
 <section class="panel-card">

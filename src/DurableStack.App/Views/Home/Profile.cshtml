@@ -1,6 +1,9 @@
 @{
     Html.AddTitleParts("Profile");
     Html.SetActiveMenuItem(AppMenuKeys.SettingsPreferences);
+    Html.AddBreadcrumbsPart("Settings", "/settings");
+    Html.AddBreadcrumbsPart("Preferences", "/settings/preferences");
+    Html.AddBreadcrumbsPart("Profile");
 }
 
 <section class="panel-card">

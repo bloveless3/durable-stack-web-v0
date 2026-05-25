@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using DurableStack.App.Menu;
+using DurableStack.App.Models.Layout;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -9,6 +10,7 @@ public static class HtmlHelperExtensions
 {
     private const string TitlePartsKey = "DurableStack.TitleParts";
     private const string ActiveMenuKey = "DurableStack.ActiveMenuKey";
+    private const string BreadcrumbPartsKey = "DurableStack.BreadcrumbParts";
     private const string AppName = "DurableStack";
 
     public static void AddTitleParts(this IHtmlHelper html, params string[] parts)
@@ -92,6 +94,30 @@ public static class HtmlHelperExtensions
         };
     }
 
+    public static void AddBreadcrumbsPart(this IHtmlHelper html, string title, string? url = null)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+
+        var parts = GetOrCreateBreadcrumbParts(html);
+        parts.Add(new AppBreadcrumbPart
+        {
+            Title = title.Trim(),
+            Url = string.IsNullOrWhiteSpace(url) ? null : url.Trim()
+        });
+    }
+
+    public static IReadOnlyList<AppBreadcrumbPart> GetBreadcrumbsParts(this IHtmlHelper html)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+
+        return GetOrCreateBreadcrumbParts(html).ToList();
+    }
+
     private static IList<string> GetOrCreateTitleParts(IHtmlHelper html)
     {
         var items = html.ViewContext.HttpContext.Items;
@@ -105,5 +131,20 @@ public static class HtmlHelperExtensions
         items[TitlePartsKey] = titleParts;
 
         return titleParts;
+    }
+
+    private static IList<AppBreadcrumbPart> GetOrCreateBreadcrumbParts(IHtmlHelper html)
+    {
+        var items = html.ViewContext.HttpContext.Items;
+
+        if (items.TryGetValue(BreadcrumbPartsKey, out var existingParts) && existingParts is IList<AppBreadcrumbPart> parsedParts)
+        {
+            return parsedParts;
+        }
+
+        var breadcrumbParts = new List<AppBreadcrumbPart>();
+        items[BreadcrumbPartsKey] = breadcrumbParts;
+
+        return breadcrumbParts;
     }
 }

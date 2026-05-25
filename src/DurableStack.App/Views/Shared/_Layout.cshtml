@@ -130,7 +130,7 @@
                     var pageHeaderModel = new DurableStack.App.Models.Layout.AppPageHeaderViewModel
                     {
                         Title = Html.GetCurrentPageTitle(),
-                        Breadcrumbs = new[] { "Tenant", "Acme Platform", Html.GetCurrentPageTitle() },
+                        Breadcrumbs = Html.GetBreadcrumbsParts(),
                         PageControls = pageControls
                     };
                 }
