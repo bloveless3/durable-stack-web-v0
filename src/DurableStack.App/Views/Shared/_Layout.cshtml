@@ -79,14 +79,7 @@
             <aside id="app-sidebar" class="app-sidebar" aria-label="Primary navigation" data-sidebar>
                 <p class="sidebar-label">Navigation</p>
                 <nav class="sidebar-nav" aria-label="Primary">
-                    <a class="sidebar-link" asp-area="" asp-controller="Home" asp-action="Index">Dashboard</a>
-                    <a class="sidebar-link" href="#">Reports</a>
-                    <a class="sidebar-link" href="#">Runs</a>
-                    <a class="sidebar-link" href="#">Jobs</a>
-                    <a class="sidebar-link" href="#">Workers</a>
-                    <a class="sidebar-link" href="#">Alerts</a>
-                    <a class="sidebar-link" href="#">Projects</a>
-                    <a class="sidebar-link" asp-area="" asp-controller="Home" asp-action="Privacy">Settings</a>
+                    <partial name="_AppSidebarMenu" model="@Html.BuildAppMenu()" />
                 </nav>
 
                 <section class="sidebar-profile" aria-label="User profile">

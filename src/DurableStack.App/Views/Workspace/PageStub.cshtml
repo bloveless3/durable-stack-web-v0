@@ -1,0 +1,13 @@
+@model DurableStack.App.Models.Workspace.WorkspacePageViewModel
+@{
+    Html.AddTitleParts(Model.Title);
+    Html.SetActiveMenuItem(Model.MenuKey);
+}
+
+<section class="panel-card">
+    <header class="panel-header">
+        <h2>@Model.Title</h2>
+        <span class="panel-meta">Stub</span>
+    </header>
+    <p>@Model.Description</p>
+</section>

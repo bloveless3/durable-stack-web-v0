@@ -2,6 +2,7 @@ using DurableStack.ControlPlane.DependencyInjection;
 using DurableStack.App.Services.Api;
 using DurableStack.App.Data;
 using DurableStack.App.Services.Identity;
+using DurableStack.App.Menu;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -17,6 +18,7 @@ builder.Services.Configure<MvcViewOptions>(options =>
 builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+builder.Services.AddSingleton<IAppMenuProvider, AppMenuProvider>();
 builder.Services.AddControlPlanePostgres(builder.Configuration);
 builder.Services.AddDbContext<AppIdentityDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("ControlPlane")));

@@ -1,0 +1,46 @@
+@model DurableStack.App.Menu.AppMenuViewModel
+
+@foreach (var item in Model.Items)
+{
+    var isActive = string.Equals(Model.ActiveKey, item.Key, StringComparison.OrdinalIgnoreCase);
+    var hasChildren = item.Children.Count > 0;
+    var hasActiveChild = item.Children.Any(child => string.Equals(Model.ActiveKey, child.Key, StringComparison.OrdinalIgnoreCase));
+    var isGroupActive = isActive || hasActiveChild;
+
+    <div class="sidebar-nav-group @(hasChildren ? "has-children" : string.Empty) @(isGroupActive ? "is-active is-expanded" : string.Empty)" data-menu-group data-menu-key="@item.Key" data-has-children="@(hasChildren ? "true" : "false")">
+        @if (hasChildren)
+        {
+            <button type="button" class="sidebar-link sidebar-link-toggle @(isGroupActive ? "is-active" : string.Empty)" data-menu-trigger aria-expanded="@(isGroupActive ? "true" : "false")" aria-controls="submenu-@item.Key">
+                <span class="sidebar-link-main">
+                    @if (!string.IsNullOrWhiteSpace(item.IconClass))
+                    {
+                        <i class="@item.IconClass sidebar-link-icon" aria-hidden="true"></i>
+                    }
+                    <span class="sidebar-link-text">@item.Title</span>
+                </span>
+                <i class="fa-solid fa-chevron-down sidebar-link-caret" aria-hidden="true"></i>
+            </button>
+        }
+        else
+        {
+            <a class="sidebar-link @(isGroupActive ? "is-active" : string.Empty)" href="@item.Url" data-menu-key="@item.Key">
+                @if (!string.IsNullOrWhiteSpace(item.IconClass))
+                {
+                    <i class="@item.IconClass sidebar-link-icon" aria-hidden="true"></i>
+                }
+                <span class="sidebar-link-text">@item.Title</span>
+            </a>
+        }
+
+        @if (hasChildren)
+        {
+            <div id="submenu-@item.Key" class="sidebar-submenu" data-menu-panel>
+                @foreach (var child in item.Children)
+                {
+                    var childIsActive = string.Equals(Model.ActiveKey, child.Key, StringComparison.OrdinalIgnoreCase);
+                    <a class="sidebar-sublink @(childIsActive ? "is-active" : string.Empty)" href="@child.Url" data-menu-key="@child.Key">@child.Title</a>
+                }
+            </div>
+        }
+    </div>
+}

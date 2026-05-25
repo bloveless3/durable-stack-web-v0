@@ -1,4 +1,5 @@
 using System.Text.Encodings.Web;
+using DurableStack.App.Menu;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -7,6 +8,7 @@ namespace DurableStack.App.Extensions;
 public static class HtmlHelperExtensions
 {
     private const string TitlePartsKey = "DurableStack.TitleParts";
+    private const string ActiveMenuKey = "DurableStack.ActiveMenuKey";
     private const string AppName = "DurableStack";
 
     public static void AddTitleParts(this IHtmlHelper html, params string[] parts)
@@ -53,6 +55,41 @@ public static class HtmlHelperExtensions
 
         var titleParts = GetOrCreateTitleParts(html);
         return titleParts.Count == 0 ? AppName : titleParts[0];
+    }
+
+    public static void SetActiveMenuItem(this IHtmlHelper html, string menuKey)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+
+        if (string.IsNullOrWhiteSpace(menuKey))
+        {
+            return;
+        }
+
+        html.ViewContext.HttpContext.Items[ActiveMenuKey] = menuKey.Trim();
+    }
+
+    public static string? GetActiveMenuItem(this IHtmlHelper html)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+
+        return html.ViewContext.HttpContext.Items.TryGetValue(ActiveMenuKey, out var value)
+            ? value as string
+            : null;
+    }
+
+    public static AppMenuViewModel BuildAppMenu(this IHtmlHelper html)
+    {
+        ArgumentNullException.ThrowIfNull(html);
+
+        var provider = html.ViewContext.HttpContext.RequestServices.GetService(typeof(IAppMenuProvider)) as IAppMenuProvider;
+        var items = provider?.GetMenu() ?? Array.Empty<AppMenuItem>();
+
+        return new AppMenuViewModel
+        {
+            Items = items,
+            ActiveKey = html.GetActiveMenuItem()
+        };
     }
 
     private static IList<string> GetOrCreateTitleParts(IHtmlHelper html)
