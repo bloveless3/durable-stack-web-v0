@@ -89,7 +89,23 @@
   }
 
   .app-header-tools {
-    @apply flex h-10 items-center justify-end;
+    @apply flex h-10 items-center justify-end gap-1.5;
+  }
+
+  .app-sidebar-compact-toggle {
+    @apply hidden h-8 w-8 items-center justify-center rounded-md border leading-none;
+    border-color: color-mix(in srgb, var(--sidebar-border) 75%, #ffffff 25%);
+    color: var(--sidebar-link);
+    background: color-mix(in srgb, var(--sidebar-bg) 82%, #ffffff 18%);
+  }
+
+  .app-sidebar-compact-toggle:hover {
+    background: color-mix(in srgb, var(--sidebar-bg) 70%, var(--sidebar-link-hover-bg) 30%);
+    color: var(--sidebar-link-active-ink);
+  }
+
+  .app-sidebar-compact-toggle i {
+    @apply block text-[0.8rem] leading-none;
   }
 
   .app-theme-toggle {
@@ -104,7 +120,7 @@
   }
 
   .app-workspace {
-    @apply relative pt-[var(--header-height)];
+    @apply relative overflow-x-hidden pt-[var(--header-height)];
   }
 
   .app-content-shell {
@@ -117,8 +133,12 @@
     border-color: var(--sidebar-border);
   }
 
+  .sidebar-nav-header {
+    @apply mb-4 flex items-center gap-2 px-1;
+  }
+
   .sidebar-label {
-    @apply mb-2 px-2 text-xs uppercase tracking-[0.09em];
+    @apply mb-0 text-xs uppercase tracking-[0.09em];
     color: var(--sidebar-label);
   }
 
@@ -259,7 +279,7 @@
   }
 
   .sidebar-profile-signout {
-    @apply self-center;
+    @apply ml-1 self-center;
   }
 
   .sidebar-profile-signout-button {
@@ -282,6 +302,31 @@
     @apply fixed inset-0 z-40 hidden;
     background: var(--overlay-bg);
     top: var(--header-height);
+  }
+
+  .sidebar-flyout {
+    @apply fixed z-50 min-w-[220px] rounded-lg border p-2 shadow-lg;
+    border-color: color-mix(in srgb, var(--sidebar-border) 68%, #ffffff 32%);
+    background: color-mix(in srgb, var(--sidebar-bg) 93%, #ffffff 7%);
+    max-height: calc(100vh - var(--header-height) - 16px);
+    overflow-y: auto;
+  }
+
+  .sidebar-flyout[hidden] {
+    @apply hidden;
+  }
+
+  .sidebar-flyout-title {
+    @apply mb-2 px-2 text-[0.68rem] font-semibold uppercase tracking-[0.08em];
+    color: var(--sidebar-label);
+  }
+
+  .sidebar-flyout .is-flyout {
+    @apply flex flex-col gap-0.5;
+  }
+
+  .sidebar-flyout .sidebar-sublink {
+    @apply rounded-md px-2 py-1.5 text-[0.77rem];
   }
 
   .app-main {
@@ -739,6 +784,10 @@
       @apply px-6;
     }
 
+    .app-sidebar-compact-toggle {
+      @apply inline-flex;
+    }
+
     .app-menu-toggle {
       @apply hidden;
     }
@@ -755,6 +804,43 @@
       @apply translate-x-0;
     }
 
+    .app-frame[data-sidebar-compact="true"] .app-sidebar {
+      width: 4.5rem;
+      @apply px-2;
+    }
+
+    .app-frame[data-sidebar-compact="true"] .sidebar-label,
+    .app-frame[data-sidebar-compact="true"] .sidebar-link-text,
+    .app-frame[data-sidebar-compact="true"] .sidebar-link-caret,
+    .app-frame[data-sidebar-compact="true"] .sidebar-submenu,
+    .app-frame[data-sidebar-compact="true"] .sidebar-profile-meta {
+      @apply hidden;
+    }
+
+    .app-frame[data-sidebar-compact="true"] .sidebar-nav-group.has-children .sidebar-link-toggle {
+      @apply justify-center;
+    }
+
+    .app-frame[data-sidebar-compact="true"] .sidebar-nav-header {
+      @apply justify-center px-0;
+    }
+
+    .app-frame[data-sidebar-compact="true"] .sidebar-link {
+      @apply justify-center px-0;
+    }
+
+    .app-frame[data-sidebar-compact="true"] .sidebar-link-icon {
+      @apply w-auto text-base;
+    }
+
+    .app-frame[data-sidebar-compact="true"] .sidebar-profile {
+      @apply -mx-2 grid-cols-1 justify-items-center gap-1.5 px-2 pb-3 pt-2;
+    }
+
+    .app-frame[data-sidebar-compact="true"] .sidebar-profile-signout {
+      @apply ml-0 mt-1 self-auto;
+    }
+
     .app-sidebar-overlay {
       @apply hidden;
     }
@@ -763,6 +849,12 @@
     .app-main,
     .app-footer {
       margin-left: var(--sidebar-width);
+    }
+
+    .app-frame[data-sidebar-compact="true"] .app-page-header,
+    .app-frame[data-sidebar-compact="true"] .app-main,
+    .app-frame[data-sidebar-compact="true"] .app-footer {
+      margin-left: 4.5rem;
     }
 
     .app-toast {

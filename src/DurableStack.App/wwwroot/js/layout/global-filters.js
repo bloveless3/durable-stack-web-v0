@@ -1,6 +1,6 @@
 (function () {
   const filterRoot = document.querySelector("[data-global-filters]");
-  if (!filterRoot || !window.durableStackPreferences) {
+  if (!filterRoot || !window.durableStackFilters) {
     return;
   }
 
@@ -16,7 +16,10 @@
       }
 
       try {
-        await window.durableStackPreferences.set(key, value);
+        const current = await window.durableStackFilters.setByKey(key, value);
+        if (current) {
+          window.durableStackFilters.applyDom(filterRoot, current.byKey);
+        }
       } catch (error) {
         if (window.durableStackToasts) {
           window.durableStackToasts.showError("Could not save filter preference.", 5000);

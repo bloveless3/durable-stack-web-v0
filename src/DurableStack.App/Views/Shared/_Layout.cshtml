@@ -1,7 +1,10 @@
 ﻿@using DurableStack.App.Services.Identity
 @inject ICurrentUserContext CurrentUserContext
-@inject DurableStack.App.Services.Preferences.IUserPreferenceService UserPreferenceService
+@inject IUserPreferenceService UserPreferenceService
 @{
+    var sidebarCompactPreference = await UserPreferenceService.GetValueAsync(DurableStack.App.Services.Preferences.PreferenceKeys.UiSidebarCompact);
+    var initialSidebarCompact = string.Equals(sidebarCompactPreference, "true", StringComparison.OrdinalIgnoreCase);
+
     var currentUserName = CurrentUserContext.DisplayName;
     if (string.IsNullOrWhiteSpace(currentUserName) && !string.IsNullOrWhiteSpace(CurrentUserContext.Email))
     {
@@ -53,6 +56,8 @@
             if (storedTheme === "dark" || storedTheme === "light") {
                 document.documentElement.setAttribute("data-theme", storedTheme);
             }
+
+            localStorage.setItem("ui.sidebar.compact", "@(initialSidebarCompact ? "true" : "false")");
         })();
     </script>
     <link rel="stylesheet" href="~/scss/app.css" asp-append-version="true" />
@@ -61,7 +66,7 @@
     @await RenderSectionAsync("HeadStyles", required: false)
 </head>
 <body class="app-body">
-    <div class="app-frame" data-app-frame data-sidebar-open="false">
+    <div class="app-frame" data-app-frame data-sidebar-open="false" data-sidebar-compact="@(initialSidebarCompact ? "true" : "false")">
         <header class="app-header">
             <div class="app-header-inner">
                 <button type="button" class="app-menu-toggle" aria-label="Open navigation" aria-controls="app-sidebar" aria-expanded="false" data-sidebar-open-trigger>
@@ -78,7 +83,12 @@
 
         <div class="app-workspace">
             <aside id="app-sidebar" class="app-sidebar" aria-label="Primary navigation" data-sidebar>
-                <p class="sidebar-label">Navigation</p>
+                <div class="sidebar-nav-header">
+                    <button type="button" class="app-sidebar-compact-toggle" data-sidebar-compact-toggle aria-pressed="false" title="Compact navigation" aria-label="Compact navigation">
+                        <i class="fa-solid fa-compress" aria-hidden="true"></i>
+                    </button>
+                    <p class="sidebar-label">Navigation</p>
+                </div>
                 <nav class="sidebar-nav" aria-label="Primary">
                     <partial name="_AppSidebarMenu" model="@Html.BuildAppMenu()" />
                 </nav>
@@ -105,6 +115,7 @@
             </aside>
 
             <button type="button" class="app-sidebar-overlay" aria-label="Close navigation" data-sidebar-close-trigger></button>
+            <div class="sidebar-flyout" data-sidebar-flyout hidden></div>
 
                 <div class="app-content-shell">
                 @{
@@ -130,10 +141,10 @@
 
                     var globalFilterValues = await UserPreferenceService.GetValuesAsync(new[]
                     {
-                        "global.filter.organization",
-                        "global.filter.project",
-                        "global.filter.environment",
-                        "global.filter.timeRange"
+                        PreferenceKeys.GlobalFilterOrganization,
+                        PreferenceKeys.GlobalFilterProject,
+                        PreferenceKeys.GlobalFilterEnvironment,
+                        PreferenceKeys.GlobalFilterTimeRange
                     });
 
                     var pageHeaderModel = new DurableStack.App.Models.Layout.AppPageHeaderViewModel
@@ -143,10 +154,10 @@
                         ShowGlobalFilters = Html.GetShowGlobalFilters(),
                         GlobalFilters = new DurableStack.App.Models.Layout.GlobalFilterViewModel
                         {
-                            Organization = globalFilterValues.TryGetValue("global.filter.organization", out var organization) ? organization : "all-organizations",
-                            Project = globalFilterValues.TryGetValue("global.filter.project", out var project) ? project : "all-projects",
-                            Environment = globalFilterValues.TryGetValue("global.filter.environment", out var environment) ? environment : "all-environments",
-                            TimeRange = globalFilterValues.TryGetValue("global.filter.timeRange", out var timeRange) ? timeRange : "24h"
+                            Organization = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterOrganization, out var organization) ? organization : "all-organizations",
+                            Project = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterProject, out var project) ? project : "all-projects",
+                            Environment = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterEnvironment, out var environment) ? environment : "all-environments",
+                            TimeRange = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterTimeRange, out var timeRange) ? timeRange : "24h"
                         },
                         PageControls = pageControls
                     };
@@ -165,7 +176,10 @@
             <span>Operational Visibility for Durable Jobs</span>
         </footer>
     </div>
+    <script src="~/js/layout/preference-keys.js" asp-append-version="true"></script>
+    <script src="~/js/layout/api-client.js" asp-append-version="true"></script>
     <script src="~/js/layout/preference-client.js" asp-append-version="true"></script>
+    <script src="~/js/layout/global-filter-facade.js" asp-append-version="true"></script>
     <script src="~/js/layout/global-filters.js" asp-append-version="true"></script>
     <script src="~/js/layout/toast-center.js" asp-append-version="true"></script>
     <script src="~/js/layout/app-shell.js" asp-append-version="true"></script>

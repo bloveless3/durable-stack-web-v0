@@ -1,25 +1,16 @@
 (function () {
-  async function requestJson(url, options) {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`Preference request failed (${response.status})`);
-    }
-
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      return await response.json();
-    }
-
-    return null;
+  if (!window.durableStackApi) {
+    return;
   }
 
   async function setPreference(key, value) {
-    await requestJson("/api/preferences", {
+    await window.durableStackApi.request("/api/preferences", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ key: key, value: value })
+      body: JSON.stringify({ key: key, value: value }),
+      retries: 1
     });
   }
 
@@ -32,13 +23,22 @@
       return `key=${encodeURIComponent(key)}`;
     }).join("&");
 
-    return await requestJson(`/api/preferences?${query}`, {
-      method: "GET"
-    }) || {};
+    const response = await window.durableStackApi.request(`/api/preferences?${query}`, {
+      method: "GET",
+      retries: 1
+    });
+
+    return response.data || {};
+  }
+
+  async function getPreference(key) {
+    const values = await getPreferences([key]);
+    return values[key] || null;
   }
 
   window.durableStackPreferences = {
     set: setPreference,
+    get: getPreference,
     getMany: getPreferences
   };
 })();
