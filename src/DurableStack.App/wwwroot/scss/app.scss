@@ -6,6 +6,7 @@
   :root {
     --header-height: 3.75rem;
     --sidebar-width: 272px;
+    --sidebar-compact-width: 4.5rem;
     --surface-base: #f4f6f5;
     --surface-main: #eef2ef;
     --header-bg: #ffffff;
@@ -23,6 +24,12 @@
     --card-border: #d8e0da;
     --muted-ink: #6b756f;
     --overlay-bg: rgba(15, 20, 12, 0.45);
+    --color-success: #16a34a;
+    --color-error: #dc2626;
+    --color-warning: #d97706;
+    --color-info: #0ea5a4;
+    --focus-ring: color-mix(in srgb, var(--sidebar-link-active-bg) 65%, #ffffff 35%);
+    --tooltip-bg: #0f172a;
   }
 
   :root[data-theme="dark"] {
@@ -180,7 +187,7 @@
   .sidebar-profile-link:focus-visible,
   .sidebar-profile-signout-button:focus-visible {
     @apply outline-none;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sidebar-link-active-bg) 65%, #ffffff 35%);
+    box-shadow: 0 0 0 2px var(--focus-ring);
   }
 
   .sidebar-link-main {
@@ -353,35 +360,35 @@
   }
 
   .app-toast-success {
-    border-left: 4px solid #16a34a !important;
-    border-top: 1px solid color-mix(in srgb, #16a34a 34%, var(--card-border));
-    border-bottom: 1px solid color-mix(in srgb, #16a34a 34%, var(--card-border));
-    background: linear-gradient(90deg, rgba(22, 163, 74, 0.22) 0%, rgba(22, 163, 74, 0.08) 35%, rgba(255, 255, 255, 0) 100%),
-      color-mix(in srgb, var(--header-bg) 86%, #16a34a 14%) !important;
+    border-left: 4px solid var(--color-success) !important;
+    border-top: 1px solid color-mix(in srgb, var(--color-success) 34%, var(--card-border));
+    border-bottom: 1px solid color-mix(in srgb, var(--color-success) 34%, var(--card-border));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-success) 22%, transparent) 0%, color-mix(in srgb, var(--color-success) 8%, transparent) 35%, rgba(255, 255, 255, 0) 100%),
+      color-mix(in srgb, var(--header-bg) 86%, var(--color-success) 14%) !important;
   }
 
   .app-toast-error {
-    border-left: 4px solid #dc2626 !important;
-    border-top: 1px solid color-mix(in srgb, #dc2626 34%, var(--card-border));
-    border-bottom: 1px solid color-mix(in srgb, #dc2626 34%, var(--card-border));
-    background: linear-gradient(90deg, rgba(220, 38, 38, 0.22) 0%, rgba(220, 38, 38, 0.08) 35%, rgba(255, 255, 255, 0) 100%),
-      color-mix(in srgb, var(--header-bg) 86%, #dc2626 14%) !important;
+    border-left: 4px solid var(--color-error) !important;
+    border-top: 1px solid color-mix(in srgb, var(--color-error) 34%, var(--card-border));
+    border-bottom: 1px solid color-mix(in srgb, var(--color-error) 34%, var(--card-border));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-error) 22%, transparent) 0%, color-mix(in srgb, var(--color-error) 8%, transparent) 35%, rgba(255, 255, 255, 0) 100%),
+      color-mix(in srgb, var(--header-bg) 86%, var(--color-error) 14%) !important;
   }
 
   .app-toast-warning {
-    border-left: 4px solid #d97706 !important;
-    border-top: 1px solid color-mix(in srgb, #d97706 34%, var(--card-border));
-    border-bottom: 1px solid color-mix(in srgb, #d97706 34%, var(--card-border));
-    background: linear-gradient(90deg, rgba(217, 119, 6, 0.22) 0%, rgba(217, 119, 6, 0.08) 35%, rgba(255, 255, 255, 0) 100%),
-      color-mix(in srgb, var(--header-bg) 86%, #d97706 14%) !important;
+    border-left: 4px solid var(--color-warning) !important;
+    border-top: 1px solid color-mix(in srgb, var(--color-warning) 34%, var(--card-border));
+    border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 34%, var(--card-border));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-warning) 22%, transparent) 0%, color-mix(in srgb, var(--color-warning) 8%, transparent) 35%, rgba(255, 255, 255, 0) 100%),
+      color-mix(in srgb, var(--header-bg) 86%, var(--color-warning) 14%) !important;
   }
 
   .app-toast-info {
-    border-left: 4px solid #0ea5a4 !important;
-    border-top: 1px solid color-mix(in srgb, #0ea5a4 34%, var(--card-border));
-    border-bottom: 1px solid color-mix(in srgb, #0ea5a4 34%, var(--card-border));
-    background: linear-gradient(90deg, rgba(14, 165, 164, 0.22) 0%, rgba(14, 165, 164, 0.08) 35%, rgba(255, 255, 255, 0) 100%),
-      color-mix(in srgb, var(--header-bg) 86%, #0ea5a4 14%) !important;
+    border-left: 4px solid var(--color-info) !important;
+    border-top: 1px solid color-mix(in srgb, var(--color-info) 34%, var(--card-border));
+    border-bottom: 1px solid color-mix(in srgb, var(--color-info) 34%, var(--card-border));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-info) 22%, transparent) 0%, color-mix(in srgb, var(--color-info) 8%, transparent) 35%, rgba(255, 255, 255, 0) 100%),
+      color-mix(in srgb, var(--header-bg) 86%, var(--color-info) 14%) !important;
   }
 
   .app-toast-body {
@@ -488,7 +495,7 @@
 
   .app-global-filter-field select:focus-visible {
     @apply outline-none;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sidebar-link-active-bg) 50%, #ffffff 50%);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring) 72%, transparent 28%);
   }
 
   .app-page-control-group {
@@ -544,19 +551,19 @@
 
   .page-state-loading .page-state-icon,
   .page-state-info .page-state-icon {
-    color: #0ea5a4;
+    color: var(--color-info);
   }
 
   .page-state-empty .page-state-icon {
-    color: #14b8a6;
+    color: color-mix(in srgb, var(--color-info) 82%, #34d399 18%);
   }
 
   .page-state-error .page-state-icon {
-    color: #dc2626;
+    color: var(--color-error);
   }
 
   .page-state-no-access .page-state-icon {
-    color: #d97706;
+    color: var(--color-warning);
   }
 
   [data-page-state-spinner] {
@@ -600,7 +607,7 @@
     @apply rounded-md px-2 py-1 text-xs;
     content: attr(data-tip);
     color: #f8fafc;
-    background: #0f172a;
+    background: var(--tooltip-bg);
     line-height: 1.2;
     white-space: nowrap;
   }
@@ -618,7 +625,7 @@
 
   .app-tooltip-bottom:after {
     top: calc(100% + 4px);
-    border-bottom: 6px solid #0f172a;
+    border-bottom: 6px solid var(--tooltip-bg);
     transform: translate(-50%, -2px);
   }
 
@@ -633,7 +640,7 @@
     right: calc(100% + 2px);
     left: auto;
     top: 50%;
-    border-left: 6px solid #0f172a;
+    border-left: 6px solid var(--tooltip-bg);
     border-right: 0;
     border-top: 5px solid transparent;
     border-bottom: 5px solid transparent;
@@ -693,6 +700,24 @@
 
   .panel-card {
     @apply p-4;
+  }
+
+  .standard-page-card {
+    @apply mb-3;
+  }
+
+  .standard-page-eyebrow {
+    @apply mb-1 text-[0.68rem] font-semibold uppercase tracking-[0.08em];
+    color: var(--muted-ink);
+  }
+
+  .standard-page-description {
+    @apply m-0 text-sm;
+    color: var(--muted-ink);
+  }
+
+  .standard-page-checklist {
+    @apply mt-3;
   }
 
   .panel-header {
@@ -805,7 +830,7 @@
     }
 
     .app-frame[data-sidebar-compact="true"] .app-sidebar {
-      width: 4.5rem;
+      width: var(--sidebar-compact-width);
       @apply px-2;
     }
 
@@ -854,7 +879,7 @@
     .app-frame[data-sidebar-compact="true"] .app-page-header,
     .app-frame[data-sidebar-compact="true"] .app-main,
     .app-frame[data-sidebar-compact="true"] .app-footer {
-      margin-left: 4.5rem;
+      margin-left: var(--sidebar-compact-width);
     }
 
     .app-toast {

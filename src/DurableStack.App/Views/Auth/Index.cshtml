@@ -2,6 +2,7 @@
 @{
     Html.AddTitleParts("Get started");
     Layout = "_AuthLayout";
+    var returnUrl = ViewData["ReturnUrl"] as string;
 }
 
 <section class="auth-card" aria-label="Get started">
@@ -9,7 +10,7 @@
     <h1 class="auth-title">Get started</h1>
     <p class="auth-subtitle">Enter your email and we will guide you to the fastest sign-in path.</p>
 
-    <form method="post" asp-controller="Auth" asp-action="Index" class="auth-form" novalidate>
+    <form method="post" asp-controller="Auth" asp-action="Index" asp-route-returnUrl="@returnUrl" class="auth-form" novalidate>
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
         <label asp-for="Email" class="auth-label"></label>

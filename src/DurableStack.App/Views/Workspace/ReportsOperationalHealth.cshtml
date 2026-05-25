@@ -1,0 +1,38 @@
+@model DurableStack.App.Models.Workspace.WorkspacePageViewModel
+@{
+    Html.AddTitleParts(Model.Title);
+    Html.SetActiveMenuItem(Model.MenuKey);
+    Html.SetShowGlobalFilters(true);
+    Html.AddBreadcrumbsPart("Reports", "/reports");
+    Html.AddBreadcrumbsPart(Model.Title);
+
+    var scaffold = new DurableStack.App.Models.Layout.StandardPageScaffoldViewModel
+    {
+        Eyebrow = "Page standard",
+        Title = "Operational health foundations",
+        Description = "This page demonstrates the standard page scaffold structure for upcoming feature work.",
+        ChecklistItems =
+        [
+            "Use header breadcrumbs + optional page controls",
+            "Keep global filters opt-in per page",
+            "Render meaningful empty/loading/error/no-access states",
+            "Prefer small, focused panels over one oversized surface"
+        ],
+        PrimaryState = new DurableStack.App.Models.Layout.PageStateViewModel
+        {
+            Type = "empty",
+            Title = "No operational health results yet",
+            Message = "Connect report sources and query handlers to populate this view.",
+            ActionText = "Open Reports overview",
+            ActionUrl = "/reports"
+        },
+        SecondaryState = new DurableStack.App.Models.Layout.PageStateViewModel
+        {
+            Type = "info",
+            Title = "Scaffold ready",
+            Message = "Layout, states, and filters are now in place for real report content."
+        }
+    };
+}
+
+<partial name="_StandardPageScaffold" model="scaffold" />

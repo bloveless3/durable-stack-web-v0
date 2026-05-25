@@ -8,13 +8,16 @@
     "tailwind:build:auth": "tailwindcss -i ./wwwroot/scss/auth.scss -o ./wwwroot/scss/auth.css --minify",
     "tailwind:build:all": "npm run tailwind:build && npm run tailwind:build:auth",
     "tailwind:watch": "tailwindcss -i ./wwwroot/scss/app.scss -o ./wwwroot/scss/app.css --watch",
-    "tailwind:watch:auth": "tailwindcss -i ./wwwroot/scss/auth.scss -o ./wwwroot/scss/auth.css --watch"
+    "tailwind:watch:auth": "tailwindcss -i ./wwwroot/scss/auth.scss -o ./wwwroot/scss/auth.css --watch",
+    "e2e:install": "playwright install chromium",
+    "e2e:smoke": "playwright test --config=playwright.config.js --project=chromium"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "tailwindcss": "^3.4.17"
   }
 }

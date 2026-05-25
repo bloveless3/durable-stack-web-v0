@@ -17,7 +17,7 @@ public sealed class WorkspaceController : Controller
     [HttpGet("reports/operational-health")]
     public IActionResult ReportsOperationalHealth()
     {
-        return View("PageStub", CreateModel("Operational Health", AppMenuKeys.ReportsOperationalHealth, "Operational health reporting surfaces will appear here."));
+        return View("ReportsOperationalHealth", CreateModel("Operational Health", AppMenuKeys.ReportsOperationalHealth, "Operational health reporting surfaces will appear here."));
     }
 
     [HttpGet("reports/failure-analysis")]
@@ -81,6 +81,7 @@ public sealed class WorkspaceController : Controller
     }
 
     [HttpGet("alerts/rules")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Operator}")]
     public IActionResult AlertsRules()
     {
         return View("PageStub", CreateModel("Alert Rules", AppMenuKeys.AlertsAlertRules, "Alert rule builder will appear here."));
@@ -93,12 +94,14 @@ public sealed class WorkspaceController : Controller
     }
 
     [HttpGet("alerts/channels")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Operator}")]
     public IActionResult AlertsChannels()
     {
         return View("PageStub", CreateModel("Notification Channels", AppMenuKeys.AlertsNotificationChannels, "Notification channel settings will appear here."));
     }
 
     [HttpGet("projects")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Operator}")]
     public IActionResult Projects()
     {
         return View("PageStub", CreateModel("Projects", AppMenuKeys.Projects, "Project management workspace will appear here."));
@@ -111,30 +114,35 @@ public sealed class WorkspaceController : Controller
     }
 
     [HttpGet("settings/organization")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Operator}")]
     public IActionResult SettingsOrganization()
     {
         return View("PageStub", CreateModel("Organization Settings", AppMenuKeys.SettingsOrganizationSettings, "Organization settings will appear here."));
     }
 
     [HttpGet("settings/members")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Operator}")]
     public IActionResult SettingsMembers()
     {
         return View("PageStub", CreateModel("Organization Members", AppMenuKeys.SettingsOrganizationMembers, "Organization member management will appear here."));
     }
 
     [HttpGet("settings/integrations")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Operator}")]
     public IActionResult SettingsIntegrations()
     {
         return View("PageStub", CreateModel("API & Integrations", AppMenuKeys.SettingsApiIntegrations, "API and integration settings will appear here."));
     }
 
     [HttpGet("settings/audit-log")]
+    [Authorize(Roles = AppRoles.Admin)]
     public IActionResult SettingsAuditLog()
     {
         return View("PageStub", CreateModel("Audit Log", AppMenuKeys.SettingsAuditLog, "Audit log views will appear here."));
     }
 
     [HttpGet("settings/billing")]
+    [Authorize(Roles = AppRoles.Admin)]
     public IActionResult SettingsBilling()
     {
         return View("PageStub", CreateModel("Billing (future)", AppMenuKeys.SettingsBillingFuture, "Billing workspace is planned for a future phase."));
@@ -147,6 +155,7 @@ public sealed class WorkspaceController : Controller
     }
 
     [HttpGet("settings/security")]
+    [Authorize(Roles = AppRoles.Admin)]
     public IActionResult SettingsSecurity()
     {
         return View("PageStub", CreateModel("Security", AppMenuKeys.SettingsSecurity, "Security settings and controls will appear here."));

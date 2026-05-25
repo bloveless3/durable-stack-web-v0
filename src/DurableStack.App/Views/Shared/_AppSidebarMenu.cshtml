@@ -10,7 +10,7 @@
     <div class="sidebar-nav-group @(hasChildren ? "has-children" : string.Empty) @(isGroupActive ? "is-active is-expanded" : string.Empty)" data-menu-group data-menu-key="@item.Key" data-has-children="@(hasChildren ? "true" : "false")">
         @if (hasChildren)
         {
-            <button type="button" class="sidebar-link sidebar-link-toggle @(isGroupActive ? "is-active" : string.Empty)" data-menu-trigger aria-expanded="@(isGroupActive ? "true" : "false")" aria-controls="submenu-@item.Key">
+            <button type="button" class="sidebar-link sidebar-link-toggle @(isGroupActive ? "is-active" : string.Empty)" data-menu-trigger aria-expanded="@(isGroupActive ? "true" : "false")" aria-controls="submenu-@item.Key" aria-haspopup="true" data-menu-title="@item.Title">
                 <span class="sidebar-link-main">
                     @if (!string.IsNullOrWhiteSpace(item.IconClass))
                     {

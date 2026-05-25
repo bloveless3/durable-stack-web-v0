@@ -2,6 +2,7 @@
 @{
     Html.AddTitleParts("Sign in");
     Layout = "_AuthLayout";
+    var returnUrl = ViewData["ReturnUrl"] as string;
 }
 
 <section class="auth-card" aria-label="Sign in">
@@ -43,7 +44,7 @@
 
     @if (Model.AllowPasswordSignIn)
     {
-        <form method="post" asp-controller="Auth" asp-action="SignIn" class="auth-form" novalidate>
+        <form method="post" asp-controller="Auth" asp-action="SignIn" asp-route-returnUrl="@returnUrl" class="auth-form" novalidate>
             @Html.AntiForgeryToken()
             <input asp-for="Email" type="hidden" />
             <div asp-validation-summary="ModelOnly" class="auth-validation"></div>
@@ -68,7 +69,7 @@
         <button type="button" class="auth-secondary auth-secondary-muted" disabled aria-disabled="true">Email me a sign-in link (Soon)</button>
     }
 
-    <a asp-controller="Auth" asp-action="Index" class="auth-secondary">Use a different email</a>
+    <a asp-controller="Auth" asp-action="Index" asp-route-returnUrl="@returnUrl" class="auth-secondary">Use a different email</a>
     <p class="auth-footer">&copy; @DateTime.UtcNow.Year DurableStack</p>
 </section>
 

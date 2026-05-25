@@ -16,4 +16,13 @@ public static class PreferenceKeys
         GlobalFilterEnvironment,
         GlobalFilterTimeRange
     ];
+
+    public static readonly IReadOnlySet<string> AllowedKeys = new HashSet<string>(StringComparer.Ordinal)
+    {
+        UiSidebarCompact,
+        GlobalFilterOrganization,
+        GlobalFilterProject,
+        GlobalFilterEnvironment,
+        GlobalFilterTimeRange
+    };
 }

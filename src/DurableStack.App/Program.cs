@@ -5,6 +5,7 @@ using DurableStack.App.Services.Identity;
 using DurableStack.App.Menu;
 using DurableStack.App.Services.Preferences;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,14 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
+builder.Services.AddProblemDetails();
+builder.Services.AddHttpLogging(options =>
+{
+    options.LoggingFields = HttpLoggingFields.RequestMethod
+        | HttpLoggingFields.RequestPath
+        | HttpLoggingFields.ResponseStatusCode
+        | HttpLoggingFields.Duration;
+});
 builder.Services.Configure<MvcViewOptions>(options =>
 {
     options.HtmlHelperOptions.CheckBoxHiddenInputRenderMode = CheckBoxHiddenInputRenderMode.None;
@@ -43,6 +52,11 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/auth";
     options.AccessDeniedPath = "/auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.SlidingExpiration = true;
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
 builder.Services.Configure<DurableStackApiOptions>(
     builder.Configuration.GetSection(DurableStackApiOptions.SectionName));
@@ -125,7 +139,38 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseHttpLogging();
 app.UseRouting();
+
+app.Use(async (context, next) =>
+{
+    var start = DateTimeOffset.UtcNow;
+
+    try
+    {
+        await next();
+
+        app.Logger.LogInformation(
+            "HTTP {Method} {Path} responded {StatusCode} in {ElapsedMs} ms (TraceId: {TraceId})",
+            context.Request.Method,
+            context.Request.Path,
+            context.Response.StatusCode,
+            (DateTimeOffset.UtcNow - start).TotalMilliseconds,
+            context.TraceIdentifier);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(
+            ex,
+            "Unhandled exception for {Method} {Path} (TraceId: {TraceId})",
+            context.Request.Method,
+            context.Request.Path,
+            context.TraceIdentifier);
+
+        throw;
+    }
+});
+
 app.UseAuthentication();
 
 app.UseAuthorization();

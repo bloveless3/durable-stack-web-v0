@@ -1,0 +1,34 @@
+@model DurableStack.App.Models.Layout.StandardPageScaffoldViewModel
+
+<section class="panel-card standard-page-card">
+    @if (!string.IsNullOrWhiteSpace(Model.Eyebrow))
+    {
+        <p class="standard-page-eyebrow">@Model.Eyebrow</p>
+    }
+
+    <header class="panel-header">
+        <h2>@Model.Title</h2>
+    </header>
+
+    <p class="standard-page-description">@Model.Description</p>
+
+    @if (Model.ChecklistItems.Count > 0)
+    {
+        <ul class="task-list standard-page-checklist">
+            @foreach (var item in Model.ChecklistItems)
+            {
+                <li>@item</li>
+            }
+        </ul>
+    }
+</section>
+
+@if (Model.PrimaryState is not null)
+{
+    <partial name="_PageState" model="Model.PrimaryState" />
+}
+
+@if (Model.SecondaryState is not null)
+{
+    <partial name="_PageState" model="Model.SecondaryState" />
+}
