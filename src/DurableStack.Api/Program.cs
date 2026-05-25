@@ -1,20 +1,37 @@
+using System.Text.Json;
 using DurableStack.Api.Services;
 using DurableStack.ControlPlane;
-using DurableStack.ControlPlane.Entities;
 using DurableStack.ControlPlane.DependencyInjection;
+using DurableStack.ControlPlane.Entities;
 using DurableStack.Platform.Contracts;
 using DurableStack.Telemetry;
 using DurableStack.Telemetry.DependencyInjection;
 using DurableStack.Telemetry.Entities;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
+using Npgsql;
+
+const string CorrelationIdHeaderName = "X-Correlation-Id";
+const string TenantHeaderName = "X-DurableStack-TenantId";
+const string SecretHeaderName = "X-DurableStack-ClientSecret";
+const int MaxRequestBytes = 1024 * 1024;
+const int MaxPayloadJsonLength = 65535;
+const int MaxCorrelationIdLength = 128;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var docsBaseUrl = NormalizeDocsBaseUrl(builder.Configuration["Documentation:BaseUrl"]);
+
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
+builder.Services.AddProblemDetails();
 
-builder.Services.AddControlPlanePostgres(builder.Configuration);
-builder.Services.AddTelemetryPostgres(builder.Configuration);
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddControlPlanePostgres(builder.Configuration);
+    builder.Services.AddTelemetryPostgres(builder.Configuration);
+}
 
 var app = builder.Build();
 
@@ -29,7 +46,15 @@ if (app.Environment.IsDevelopment())
     telemetryDb.Database.Migrate();
 }
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
+
+app.Use(async (context, next) =>
+{
+    var correlationId = ResolveCorrelationId(context);
+    context.Response.Headers[CorrelationIdHeaderName] = correlationId;
+    await next();
+});
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
@@ -117,76 +142,93 @@ app.MapPost("/dev/bootstrap/tenant", async (
 }).WithDescription("Local-only helper to create a demo tenant and credential.");
 
 app.MapPost("/v1/events/batch", async (
-    HttpRequest request,
+    HttpContext context,
     TelemetryBatchRequest payload,
     ControlPlaneDbContext controlPlaneDb,
     TelemetryDbContext telemetryDb,
     CancellationToken cancellationToken) =>
 {
-    var (success, tenantId) = await request.TryAuthenticateAsync(controlPlaneDb, cancellationToken);
-    if (!success || tenantId is null)
+    var correlationId = ResolveCorrelationId(context);
+
+    if (context.Request.ContentLength is > MaxRequestBytes)
     {
-        return Results.Unauthorized();
+        return CreateProblem(
+            statusCode: StatusCodes.Status413PayloadTooLarge,
+            title: "Request payload is too large.",
+            detail: $"The request body must be <= {MaxRequestBytes} bytes.",
+            type: BuildProblemTypeUrl(docsBaseUrl, "payload-too-large"),
+            correlationId: correlationId);
     }
 
-    if (payload.Events.Count == 0)
+    var authResult = await context.Request.TryAuthenticateAsync(controlPlaneDb, cancellationToken);
+    if (!authResult.Success || authResult.TenantId is null)
     {
-        return Results.BadRequest(new { error = "At least one event is required." });
+        return CreateAuthProblem(authResult, correlationId, docsBaseUrl);
     }
 
     var tenant = await controlPlaneDb.Tenants
         .AsNoTracking()
-        .SingleOrDefaultAsync(x => x.PublicTenantId == tenantId, cancellationToken);
+        .SingleOrDefaultAsync(x => x.PublicTenantId == authResult.TenantId, cancellationToken);
 
     if (tenant is null)
     {
-        return Results.Unauthorized();
+        return CreateProblem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Unauthorized",
+            detail: "Authentication failed for tenant credentials.",
+            type: BuildProblemTypeUrl(docsBaseUrl, "auth-failed"),
+            correlationId: correlationId,
+            code: "invalid_credentials");
     }
 
     if (!tenant.SyncEnabled)
     {
-        return Results.StatusCode(StatusCodes.Status403Forbidden);
+        return CreateProblem(
+            statusCode: StatusCodes.Status403Forbidden,
+            title: "Telemetry sync is disabled.",
+            detail: "Ingestion is disabled for this tenant.",
+            type: BuildProblemTypeUrl(docsBaseUrl, "sync-disabled"),
+            correlationId: correlationId,
+            code: "sync_disabled");
     }
 
-    if (payload.Events.Count > tenant.MaxBatchSize)
+    var validationErrors = ValidatePayload(payload, tenant.PublicTenantId, tenant.MaxBatchSize);
+    if (validationErrors.Count > 0)
     {
-        return Results.BadRequest(new
-        {
-            error = "Batch exceeds maximum allowed events.",
-            maxBatchSize = tenant.MaxBatchSize
-        });
+        return Results.ValidationProblem(
+            validationErrors,
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Telemetry batch validation failed.",
+            type: BuildProblemTypeUrl(docsBaseUrl, "validation-failed"),
+            extensions: new Dictionary<string, object?>
+            {
+                ["code"] = "validation_failed",
+                ["correlationId"] = correlationId
+            });
     }
 
-    var idempotencyKey = string.IsNullOrWhiteSpace(payload.IdempotencyKey)
-        ? null
-        : payload.IdempotencyKey.Trim();
+    var idempotencyKey = NormalizeOptional(payload.IdempotencyKey);
 
     if (idempotencyKey is not null)
     {
         var priorBatch = await telemetryDb.TelemetryBatches
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                x => x.TenantPublicId == tenantId && x.IdempotencyKey == idempotencyKey,
+                x => x.TenantPublicId == tenant.PublicTenantId && x.IdempotencyKey == idempotencyKey,
                 cancellationToken);
 
         if (priorBatch is not null)
         {
-            return Results.Ok(new TelemetryBatchResponse
-            {
-                AcceptedCount = priorBatch.AcceptedCount,
-                RejectedCount = priorBatch.RejectedCount,
-                ServerTimeUtc = DateTimeOffset.UtcNow,
-                IdempotencyKey = idempotencyKey
-            });
+            return Results.Ok(ToResponse(priorBatch, isDuplicate: true, correlationId));
         }
     }
 
     var batch = new TelemetryBatch
     {
         Id = Guid.NewGuid(),
-        TenantPublicId = tenantId,
-        ServiceName = payload.ServiceName,
-        EnvironmentName = payload.EnvironmentName,
+        TenantPublicId = tenant.PublicTenantId,
+        ServiceName = NormalizeOptional(payload.ServiceName),
+        EnvironmentName = NormalizeOptional(payload.EnvironmentName),
         IdempotencyKey = idempotencyKey,
         ReceivedAtUtc = DateTimeOffset.UtcNow,
         AcceptedCount = payload.Events.Count,
@@ -195,53 +237,67 @@ app.MapPost("/v1/events/batch", async (
 
     foreach (var item in payload.Events)
     {
-        var errorMessage = tenant.DetailedErrorSyncEnabled ? item.ErrorMessage : null;
+        var errorMessage = tenant.DetailedErrorSyncEnabled ? NormalizeOptional(item.ErrorMessage) : null;
 
         batch.Events.Add(new TelemetryEvent
         {
             Id = Guid.NewGuid(),
             BatchId = batch.Id,
-            EventType = item.EventType,
+            EventType = item.EventType.Trim(),
             EventVersion = item.EventVersion,
             OccurredAtUtc = item.OccurredAtUtc,
-            JobName = item.JobName,
+            JobName = NormalizeOptional(item.JobName),
             RunId = item.RunId,
             Attempt = item.Attempt,
-            WorkerName = item.WorkerName,
+            WorkerName = NormalizeOptional(item.WorkerName),
             DurationMs = item.DurationMs,
-            ErrorType = item.ErrorType,
+            ErrorType = NormalizeOptional(item.ErrorType),
             ErrorMessage = errorMessage,
-            PayloadJson = item.PayloadJson
+            PayloadJson = NormalizeOptional(item.PayloadJson)
         });
     }
 
     telemetryDb.TelemetryBatches.Add(batch);
-    await telemetryDb.SaveChangesAsync(cancellationToken);
 
-    return Results.Ok(new TelemetryBatchResponse
+    try
     {
-        AcceptedCount = batch.AcceptedCount,
-        RejectedCount = batch.RejectedCount,
-        ServerTimeUtc = DateTimeOffset.UtcNow,
-        IdempotencyKey = idempotencyKey
-    });
+        await telemetryDb.SaveChangesAsync(cancellationToken);
+    }
+    catch (DbUpdateException ex) when (idempotencyKey is not null && IsIdempotencyConflict(ex))
+    {
+        var priorBatch = await telemetryDb.TelemetryBatches
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                x => x.TenantPublicId == tenant.PublicTenantId && x.IdempotencyKey == idempotencyKey,
+                cancellationToken);
+
+        if (priorBatch is not null)
+        {
+            return Results.Ok(ToResponse(priorBatch, isDuplicate: true, correlationId));
+        }
+
+        throw;
+    }
+
+    return Results.Ok(ToResponse(batch, isDuplicate: false, correlationId));
 });
 
 app.MapGet("/v1/reports/summary", async (
-    HttpRequest request,
+    HttpContext context,
     ControlPlaneDbContext controlPlaneDb,
     TelemetryDbContext telemetryDb,
     CancellationToken cancellationToken) =>
 {
-    var (success, tenantId) = await request.TryAuthenticateAsync(controlPlaneDb, cancellationToken);
-    if (!success || tenantId is null)
+    var correlationId = ResolveCorrelationId(context);
+    var authResult = await context.Request.TryAuthenticateAsync(controlPlaneDb, cancellationToken);
+    if (!authResult.Success || authResult.TenantId is null)
     {
-        return Results.Unauthorized();
+        return CreateAuthProblem(authResult, correlationId, docsBaseUrl);
     }
 
     var events = telemetryDb.TelemetryEvents
         .AsNoTracking()
-        .Where(x => x.Batch != null && x.Batch.TenantPublicId == tenantId);
+        .Where(x => x.Batch != null && x.Batch.TenantPublicId == authResult.TenantId);
 
     var totalEvents = await events.CountAsync(cancellationToken);
     var failedEvents = await events.CountAsync(x => x.EventType == "job_failed", cancellationToken);
@@ -252,7 +308,7 @@ app.MapGet("/v1/reports/summary", async (
 
     return Results.Ok(new ReportSummaryResponse
     {
-        TenantId = tenantId,
+        TenantId = authResult.TenantId,
         TotalEvents = totalEvents,
         FailedEvents = failedEvents,
         LastEventAtUtc = lastEventAtUtc
@@ -260,3 +316,265 @@ app.MapGet("/v1/reports/summary", async (
 });
 
 app.Run();
+
+return;
+
+static IResult CreateAuthProblem(RequestAuthResult authResult, string correlationId, string docsBaseUrl)
+{
+    var code = authResult.FailureReason switch
+    {
+        RequestAuthFailureReason.MissingHeaders => "missing_headers",
+        RequestAuthFailureReason.InvalidHeaders => "invalid_headers",
+        _ => "invalid_credentials"
+    };
+
+    var detail = code switch
+    {
+        "missing_headers" => "Required authentication headers are missing.",
+        "invalid_headers" => "Authentication headers are present but invalid.",
+        _ => "Authentication failed for tenant credentials."
+    };
+
+    var extensions = new Dictionary<string, object?>
+    {
+        ["code"] = code,
+        ["correlationId"] = correlationId
+    };
+
+    if (code == "missing_headers")
+    {
+        extensions["requiredHeaders"] = new[] { TenantHeaderName, SecretHeaderName };
+    }
+
+    return Results.Problem(
+        statusCode: StatusCodes.Status401Unauthorized,
+        title: "Unauthorized",
+        detail: detail,
+        type: BuildProblemTypeUrl(docsBaseUrl, "auth-failed"),
+        extensions: extensions);
+}
+
+static IResult CreateProblem(
+    int statusCode,
+    string title,
+    string detail,
+    string type,
+    string correlationId,
+    string? code = null)
+{
+    var extensions = new Dictionary<string, object?>
+    {
+        ["correlationId"] = correlationId
+    };
+
+    if (!string.IsNullOrWhiteSpace(code))
+    {
+        extensions["code"] = code;
+    }
+
+    return Results.Problem(
+        statusCode: statusCode,
+        title: title,
+        detail: detail,
+        type: type,
+        extensions: extensions);
+}
+
+static TelemetryBatchResponse ToResponse(TelemetryBatch batch, bool isDuplicate, string correlationId)
+{
+    return new TelemetryBatchResponse
+    {
+        AcceptedCount = batch.AcceptedCount,
+        RejectedCount = batch.RejectedCount,
+        ServerTimeUtc = DateTimeOffset.UtcNow,
+        IdempotencyKey = batch.IdempotencyKey,
+        IsDuplicate = isDuplicate,
+        CorrelationId = correlationId
+    };
+}
+
+static Dictionary<string, string[]> ValidatePayload(
+    TelemetryBatchRequest payload,
+    string authenticatedTenantId,
+    int maxBatchSize)
+{
+    var errors = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+    if (!string.IsNullOrWhiteSpace(payload.TenantId) &&
+        !string.Equals(payload.TenantId.Trim(), authenticatedTenantId, StringComparison.OrdinalIgnoreCase))
+    {
+        AddError("tenantId", "TenantId in payload must match authenticated tenant header.");
+    }
+
+    ValidateOptionalLength(payload.IdempotencyKey, 200, "idempotencyKey");
+    ValidateOptionalLength(payload.ServiceName, 200, "serviceName");
+    ValidateOptionalLength(payload.EnvironmentName, 100, "environmentName");
+
+    if (payload.Events.Count == 0)
+    {
+        AddError("events", "At least one event is required.");
+    }
+
+    if (payload.Events.Count > maxBatchSize)
+    {
+        AddError("events", $"Batch cannot exceed {maxBatchSize} events for this tenant.");
+    }
+
+    var now = DateTimeOffset.UtcNow;
+    var oldestAllowed = now.AddDays(-30);
+    var newestAllowed = now.AddMinutes(10);
+
+    for (var i = 0; i < payload.Events.Count; i++)
+    {
+        var item = payload.Events[i];
+        var prefix = $"events[{i}]";
+
+        if (string.IsNullOrWhiteSpace(item.EventType))
+        {
+            AddError($"{prefix}.eventType", "EventType is required.");
+        }
+        else if (item.EventType.Trim().Length > 100)
+        {
+            AddError($"{prefix}.eventType", "EventType cannot exceed 100 characters.");
+        }
+
+        if (item.EventVersion <= 0)
+        {
+            AddError($"{prefix}.eventVersion", "EventVersion must be greater than zero.");
+        }
+
+        if (item.OccurredAtUtc < oldestAllowed || item.OccurredAtUtc > newestAllowed)
+        {
+            AddError(
+                $"{prefix}.occurredAtUtc",
+                "OccurredAtUtc must be within 30 days in the past and 10 minutes in the future.");
+        }
+
+        if (item.Attempt is < 0)
+        {
+            AddError($"{prefix}.attempt", "Attempt cannot be negative.");
+        }
+
+        if (item.DurationMs is < 0)
+        {
+            AddError($"{prefix}.durationMs", "DurationMs cannot be negative.");
+        }
+
+        ValidateOptionalLength(item.JobName, 200, $"{prefix}.jobName");
+        ValidateOptionalLength(item.WorkerName, 200, $"{prefix}.workerName");
+        ValidateOptionalLength(item.ErrorType, 200, $"{prefix}.errorType");
+        ValidateOptionalLength(item.ErrorMessage, 4000, $"{prefix}.errorMessage");
+
+        if (!string.IsNullOrWhiteSpace(item.PayloadJson))
+        {
+            if (item.PayloadJson.Length > MaxPayloadJsonLength)
+            {
+                AddError(
+                    $"{prefix}.payloadJson",
+                    $"PayloadJson cannot exceed {MaxPayloadJsonLength} characters.");
+            }
+            else
+            {
+                try
+                {
+                    using var _ = JsonDocument.Parse(item.PayloadJson);
+                }
+                catch (JsonException)
+                {
+                    AddError($"{prefix}.payloadJson", "PayloadJson must be valid JSON.");
+                }
+            }
+        }
+    }
+
+    return errors.ToDictionary(x => x.Key, x => x.Value.ToArray(), StringComparer.Ordinal);
+
+    void AddError(string key, string message)
+    {
+        if (!errors.TryGetValue(key, out var messages))
+        {
+            messages = new List<string>();
+            errors[key] = messages;
+        }
+
+        messages.Add(message);
+    }
+
+    void ValidateOptionalLength(string? value, int maxLength, string key)
+    {
+        if (!string.IsNullOrWhiteSpace(value) && value.Trim().Length > maxLength)
+        {
+            AddError(key, $"{key} cannot exceed {maxLength} characters.");
+        }
+    }
+}
+
+static string ResolveCorrelationId(HttpContext context)
+{
+    if (context.Items.TryGetValue(CorrelationIdHeaderName, out var existing) && existing is string value)
+    {
+        return value;
+    }
+
+    var correlationId = TryGetFirstHeaderValue(context.Request.Headers, CorrelationIdHeaderName);
+    if (string.IsNullOrWhiteSpace(correlationId))
+    {
+        correlationId = context.TraceIdentifier;
+    }
+    else
+    {
+        correlationId = correlationId.Trim();
+        if (correlationId.Length > MaxCorrelationIdLength)
+        {
+            correlationId = correlationId[..MaxCorrelationIdLength];
+        }
+    }
+
+    context.Items[CorrelationIdHeaderName] = correlationId;
+    return correlationId;
+}
+
+static string? NormalizeOptional(string? value)
+{
+    return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}
+
+static string? TryGetFirstHeaderValue(IHeaderDictionary headers, string key)
+{
+    if (!headers.TryGetValue(key, out StringValues values))
+    {
+        return null;
+    }
+
+    foreach (var value in values)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+    }
+
+    return null;
+}
+
+static bool IsIdempotencyConflict(DbUpdateException exception)
+{
+    return exception.InnerException is PostgresException postgresException &&
+           postgresException.SqlState == PostgresErrorCodes.UniqueViolation;
+}
+
+static string NormalizeDocsBaseUrl(string? configuredBaseUrl)
+{
+    var baseUrl = string.IsNullOrWhiteSpace(configuredBaseUrl)
+        ? "https://docs.durablestack.com"
+        : configuredBaseUrl.Trim();
+
+    return baseUrl.TrimEnd('/');
+}
+
+static string BuildProblemTypeUrl(string docsBaseUrl, string slug)
+{
+    return $"{docsBaseUrl}/problems/{slug}";
+}
+
+public partial class Program;

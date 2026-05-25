@@ -1,0 +1,8 @@
+- name: auth-failed
+  href: auth-failed.md
+- name: payload-too-large
+  href: payload-too-large.md
+- name: sync-disabled
+  href: sync-disabled.md
+- name: validation-failed
+  href: validation-failed.md

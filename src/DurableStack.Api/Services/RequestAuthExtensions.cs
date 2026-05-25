@@ -3,12 +3,31 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DurableStack.Api.Services;
 
+public enum RequestAuthFailureReason
+{
+    MissingHeaders,
+    InvalidHeaders,
+    InvalidCredentials
+}
+
+public readonly record struct RequestAuthResult(
+    bool Success,
+    string? TenantId,
+    RequestAuthFailureReason? FailureReason)
+{
+    public static RequestAuthResult Authenticated(string tenantId) =>
+        new(true, tenantId, null);
+
+    public static RequestAuthResult Failed(RequestAuthFailureReason reason) =>
+        new(false, null, reason);
+}
+
 public static class RequestAuthExtensions
 {
     private const string TenantHeader = "X-DurableStack-TenantId";
     private const string SecretHeader = "X-DurableStack-ClientSecret";
 
-    public static async Task<(bool Success, string? TenantId)> TryAuthenticateAsync(
+    public static async Task<RequestAuthResult> TryAuthenticateAsync(
         this HttpRequest request,
         ControlPlaneDbContext controlPlaneDb,
         CancellationToken cancellationToken)
@@ -16,14 +35,14 @@ public static class RequestAuthExtensions
         if (!request.Headers.TryGetValue(TenantHeader, out var tenantValues) ||
             !request.Headers.TryGetValue(SecretHeader, out var secretValues))
         {
-            return (false, null);
+            return RequestAuthResult.Failed(RequestAuthFailureReason.MissingHeaders);
         }
 
         var tenantId = tenantValues.ToString().Trim();
         var secret = secretValues.ToString();
         if (string.IsNullOrWhiteSpace(tenantId) || string.IsNullOrWhiteSpace(secret))
         {
-            return (false, null);
+            return RequestAuthResult.Failed(RequestAuthFailureReason.InvalidHeaders);
         }
 
         var credentialHashes = await controlPlaneDb.Tenants
@@ -36,10 +55,10 @@ public static class RequestAuthExtensions
         {
             if (CredentialHasher.Verify(secret, hash))
             {
-                return (true, tenantId);
+                return RequestAuthResult.Authenticated(tenantId);
             }
         }
 
-        return (false, null);
+        return RequestAuthResult.Failed(RequestAuthFailureReason.InvalidCredentials);
     }
 }
