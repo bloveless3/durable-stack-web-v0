@@ -30,18 +30,16 @@ Use secret storage for signing keys outside local development.
 
 ## Reporting endpoint
 
-- `POST /v1/reports/summary/query`
+- `POST /v1/reports/dashboard/query`
 - User-scope is enforced by membership intersection.
-- Time and filter limits are validated server-side.
-- Incremental polling support:
-  - request optional `sinceCursor`
-  - response includes `queryRunAtUtc` + `nextCursor`
+- Timeframe and filter limits are validated server-side.
+- Response is authoritative for the selected global filter window.
 
 ## App BFF caller expectations
 
 - App sends user bearer token with `reports.read` scope.
 - App forwards correlation ID (`X-Correlation-Id`) for observability.
-- App may poll incrementally with `sinceCursor` for dashboard freshness.
+- App polls full-window dashboard query for near-real-time freshness.
 
 ## Local build and tests
 

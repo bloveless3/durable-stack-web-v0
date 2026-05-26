@@ -698,6 +698,238 @@
     @apply grid grid-cols-1 gap-3;
   }
 
+  .dashboard-layout {
+    @apply grid grid-cols-1 gap-3;
+  }
+
+  .dashboard-main-panel {
+    @apply min-w-0;
+  }
+
+  .chart-shell {
+    @apply relative overflow-hidden rounded-lg border;
+    border-color: color-mix(in srgb, var(--card-border) 78%, transparent);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-main) 26%, #ffffff 74%) 0%, var(--card-bg) 100%);
+  }
+
+  .runs-chart {
+    @apply block h-[320px] w-full;
+  }
+
+  .runs-chart > div,
+  .runs-chart svg {
+    border-radius: 0.5rem;
+  }
+
+  .chart-empty {
+    @apply absolute inset-0 m-0 flex items-center justify-center text-sm;
+    color: var(--muted-ink);
+  }
+
+  .chart-empty[hidden] {
+    display: none !important;
+  }
+
+  .chart-legend {
+    @apply mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs;
+    color: var(--muted-ink);
+  }
+
+  .legend-swatch {
+    @apply mr-1 inline-block h-2.5 w-2.5 rounded-full;
+  }
+
+  .legend-started {
+    background: #2563eb;
+  }
+
+  .legend-succeeded {
+    background: var(--color-success);
+  }
+
+  .legend-failed {
+    background: var(--color-error);
+  }
+
+  .legend-retried {
+    background: var(--color-warning);
+  }
+
+  .legend-heartbeats {
+    background: #7c3aed;
+  }
+
+  .metric-card-runs {
+    background: linear-gradient(90deg, color-mix(in srgb, #2563eb 14%, transparent) 0%, color-mix(in srgb, #2563eb 6%, transparent) 100%), var(--card-bg);
+  }
+
+  .metric-card-success {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-success) 14%, transparent) 0%, color-mix(in srgb, var(--color-success) 6%, transparent) 100%), var(--card-bg);
+  }
+
+  .metric-card-failure {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-error) 14%, transparent) 0%, color-mix(in srgb, var(--color-error) 6%, transparent) 100%), var(--card-bg);
+  }
+
+  .metric-card-retry {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--color-warning) 14%, transparent) 0%, color-mix(in srgb, var(--color-warning) 6%, transparent) 100%), var(--card-bg);
+  }
+
+  .worker-status-pill-row {
+    @apply mb-3 flex flex-wrap gap-2;
+  }
+
+  .worker-status-pill {
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs;
+    border-color: var(--card-border);
+    color: var(--content-ink);
+  }
+
+  .worker-status-pill strong {
+    @apply text-[0.82rem];
+  }
+
+  .status-online {
+    background: color-mix(in srgb, var(--color-success) 14%, transparent);
+  }
+
+  .status-warn {
+    background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  }
+
+  .status-offline {
+    background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  }
+
+  .worker-list {
+    @apply flex max-h-[408px] flex-col gap-2 overflow-y-auto overflow-x-hidden pr-1;
+  }
+
+  .worker-card {
+    @apply min-w-0 rounded-lg border p-2.5;
+    border-color: color-mix(in srgb, var(--card-border) 75%, transparent);
+    background: color-mix(in srgb, var(--card-bg) 92%, var(--surface-main) 8%);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--card-border) 45%, transparent);
+  }
+
+  .worker-card-toggle {
+    @apply flex w-full min-w-0 items-center justify-between gap-2 rounded-md border-0 bg-transparent p-0 text-left;
+    color: inherit;
+  }
+
+  .worker-card-toggle:hover .worker-heading strong {
+    color: color-mix(in srgb, var(--content-ink) 84%, var(--color-info) 16%);
+  }
+
+  .worker-card-toggle:focus-visible {
+    @apply outline-none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus-ring) 72%, transparent 28%);
+  }
+
+  .worker-heading {
+    @apply flex min-w-0 flex-col;
+  }
+
+  .worker-heading strong {
+    @apply block truncate text-[0.82rem] font-semibold tracking-[0.01em];
+  }
+
+  .worker-heading em {
+    @apply mt-0.5 block truncate text-[0.7rem] not-italic;
+    color: var(--muted-ink);
+  }
+
+  .worker-state {
+    @apply shrink-0 rounded-full px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em];
+    background: color-mix(in srgb, var(--surface-main) 65%, transparent);
+  }
+
+  .worker-online .worker-state {
+    color: color-mix(in srgb, var(--color-success) 88%, #0f172a 12%);
+  }
+
+  .worker-warn .worker-state {
+    color: color-mix(in srgb, var(--color-warning) 82%, #0f172a 18%);
+  }
+
+  .worker-offline .worker-state {
+    color: color-mix(in srgb, var(--color-error) 82%, #0f172a 18%);
+  }
+
+  .worker-card-body {
+    @apply mt-2 border-t pt-2;
+    border-color: color-mix(in srgb, var(--card-border) 78%, transparent);
+    animation: worker-expand-in 150ms ease-out;
+  }
+
+  .worker-card-body[hidden] {
+    display: none !important;
+  }
+
+  .worker-card dl {
+    @apply m-0 grid grid-cols-2 gap-x-3 gap-y-1 text-xs;
+  }
+
+  .worker-card dt {
+    color: color-mix(in srgb, var(--muted-ink) 88%, transparent 12%);
+  }
+
+  .worker-card dd {
+    @apply m-0 truncate text-left;
+    min-width: 0;
+  }
+
+  @keyframes worker-expand-in {
+    from {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .dashboard-failures-panel {
+    @apply mt-3;
+  }
+
+  .dashboard-failure-table-wrap {
+    @apply overflow-x-auto;
+  }
+
+  .dashboard-failure-table {
+    @apply min-w-full border-separate border-spacing-0 text-sm;
+  }
+
+  .dashboard-failure-table th,
+  .dashboard-failure-table td {
+    @apply border-b px-2.5 py-2 text-left align-top;
+    border-color: color-mix(in srgb, var(--card-border) 72%, transparent);
+  }
+
+  .dashboard-failure-table th {
+    @apply text-[0.72rem] font-semibold uppercase tracking-[0.08em];
+    color: var(--muted-ink);
+  }
+
+  .dashboard-failure-table td:nth-child(5) {
+    max-width: 320px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  .dashboard-empty-row {
+    @apply text-sm;
+    color: var(--muted-ink);
+  }
+
+  .dashboard-meta-panel {
+    @apply mt-3;
+  }
+
   .panel-card {
     @apply p-4;
   }
@@ -800,7 +1032,7 @@
     }
 
     .metrics-grid {
-      @apply grid-cols-2;
+      @apply grid-cols-3;
     }
   }
 
@@ -895,11 +1127,19 @@
     }
 
     .metrics-grid {
-      @apply grid-cols-4;
+      @apply grid-cols-6;
     }
 
     .panel-grid {
       @apply grid-cols-[1.3fr_1fr];
+    }
+
+    .dashboard-layout {
+      @apply grid-cols-[2fr_1fr];
+    }
+
+    .dashboard-worker-panel {
+      @apply max-h-[520px] overflow-hidden;
     }
   }
 }

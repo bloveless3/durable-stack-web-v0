@@ -8,7 +8,7 @@ namespace DurableStack.App.Services.Api;
 
 public interface IReportsApiClient
 {
-    Task<ReportSummaryResponse?> GetSummaryAsync(ReportSummaryQueryRequest request, string bearerToken, string? correlationId, CancellationToken cancellationToken = default);
+    Task<ReportDashboardResponse?> GetDashboardAsync(ReportDashboardQueryRequest request, string bearerToken, string? correlationId, CancellationToken cancellationToken = default);
 }
 
 public sealed class ReportsApiClient : IReportsApiClient
@@ -28,13 +28,13 @@ public sealed class ReportsApiClient : IReportsApiClient
         _httpClient.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
     }
 
-    public async Task<ReportSummaryResponse?> GetSummaryAsync(
-        ReportSummaryQueryRequest request,
+    public async Task<ReportDashboardResponse?> GetDashboardAsync(
+        ReportDashboardQueryRequest request,
         string bearerToken,
         string? correlationId,
         CancellationToken cancellationToken = default)
     {
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/reports/summary/query")
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/reports/dashboard/query")
         {
             Content = JsonContent.Create(request)
         };
@@ -52,6 +52,6 @@ public sealed class ReportsApiClient : IReportsApiClient
             return null;
         }
 
-        return await response.Content.ReadFromJsonAsync<ReportSummaryResponse>(cancellationToken: cancellationToken);
+        return await response.Content.ReadFromJsonAsync<ReportDashboardResponse>(cancellationToken: cancellationToken);
     }
 }

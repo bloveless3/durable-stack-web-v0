@@ -41,12 +41,15 @@ public sealed class TelemetryDbContext : DbContext
             entity.Property(x => x.ErrorType).HasMaxLength(200);
             entity.Property(x => x.ErrorMessage).HasMaxLength(4000);
             entity.Property(x => x.PayloadJson).HasColumnType("jsonb");
+            entity.Property(x => x.HeartbeatCount);
             entity.HasOne(x => x.Batch)
                 .WithMany(x => x.Events)
                 .HasForeignKey(x => x.BatchId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => new { x.EventType, x.OccurredAtUtc });
             entity.HasIndex(x => x.RunId);
+            entity.HasIndex(x => new { x.OccurredAtUtc, x.BatchId });
+            entity.HasIndex(x => new { x.WorkerName, x.OccurredAtUtc });
         });
 
         base.OnModelCreating(modelBuilder);

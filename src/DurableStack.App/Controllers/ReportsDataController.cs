@@ -21,27 +21,26 @@ public sealed class ReportsDataController : ControllerBase
         _logger = logger;
     }
 
-    [HttpPost("dashboard-summary")]
-    public async Task<IActionResult> DashboardSummary([FromBody] DashboardSummaryRequest? request, CancellationToken cancellationToken)
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> Dashboard(CancellationToken cancellationToken)
     {
         try
         {
-            var summary = await _reportsQueryService.QueryDashboardSummaryAsync(
-                request?.SinceCursor,
+            var dashboard = await _reportsQueryService.QueryDashboardAsync(
                 HttpContext.TraceIdentifier,
                 cancellationToken);
 
-            if (summary is null)
+            if (dashboard is null)
             {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Report service is unavailable." });
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Dashboard service is unavailable." });
             }
 
-            return Ok(summary);
+            return Ok(dashboard);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to load dashboard summary from BFF reports query service.");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Unable to load dashboard summary." });
+            _logger.LogWarning(ex, "Failed to load dashboard data from BFF reports query service.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Unable to load dashboard data." });
         }
     }
 }

@@ -7,7 +7,7 @@ namespace DurableStack.App.Services.Reports;
 
 public interface IReportsQueryService
 {
-    Task<DashboardSummaryResponse?> QueryDashboardSummaryAsync(string? sinceCursor, string? correlationId, CancellationToken cancellationToken = default);
+    Task<DashboardDataResponse?> QueryDashboardAsync(string? correlationId, CancellationToken cancellationToken = default);
 }
 
 public sealed class ReportsQueryService : IReportsQueryService
@@ -26,37 +26,101 @@ public sealed class ReportsQueryService : IReportsQueryService
         _userApiTokenService = userApiTokenService;
     }
 
-    public async Task<DashboardSummaryResponse?> QueryDashboardSummaryAsync(
-        string? sinceCursor,
+    public async Task<DashboardDataResponse?> QueryDashboardAsync(
         string? correlationId,
         CancellationToken cancellationToken = default)
     {
         var preferenceValues = await _userPreferenceService.GetValuesAsync(PreferenceKeys.GlobalFilterKeys, cancellationToken);
 
-        var reportQuery = new ReportSummaryQueryRequest
+        var dashboardQuery = new ReportDashboardQueryRequest
         {
-            SinceCursor = sinceCursor,
+            Timeframe = MapTimeRangeToApiTimeframe(preferenceValues),
             TenantIds = ParseGuidList(preferenceValues, PreferenceKeys.GlobalFilterTenant, "all-tenants"),
             ProjectIds = ParseGuidList(preferenceValues, PreferenceKeys.GlobalFilterProject, "all-projects"),
             OrganizationIds = ParseGuidList(preferenceValues, PreferenceKeys.GlobalFilterOrganization, "all-organizations")
         };
 
         var token = await _userApiTokenService.CreateReportsReadTokenAsync(cancellationToken);
-        var summary = await _reportsApiClient.GetSummaryAsync(reportQuery, token, correlationId, cancellationToken);
+        var dashboard = await _reportsApiClient.GetDashboardAsync(dashboardQuery, token, correlationId, cancellationToken);
 
-        if (summary is null)
+        if (dashboard is null)
         {
             return null;
         }
 
-        return new DashboardSummaryResponse
+        return new DashboardDataResponse
         {
             Status = "Connected",
-            TotalEvents = summary.TotalEvents,
-            FailedEvents = summary.FailedEvents,
-            LastEventAtUtc = summary.LastEventAtUtc?.ToString("u") ?? "N/A",
-            QueryRunAtUtc = summary.QueryRunAtUtc.ToString("u"),
-            NextCursor = summary.NextCursor
+            Timeframe = dashboard.Timeframe,
+            BucketSize = dashboard.BucketSize,
+            LastEventAtUtc = FormatUtcOrFallback(dashboard.Summary.LastEventAtUtc),
+            QueryRunAtUtc = FormatUtc(dashboard.QueryRunAtUtc),
+            Summary = new DashboardSummaryData
+            {
+                RunStarted = dashboard.Summary.RunStarted,
+                RunSucceeded = dashboard.Summary.RunSucceeded,
+                RunFailed = dashboard.Summary.RunFailed,
+                RunRetried = dashboard.Summary.RunRetried,
+                RunsTotal = dashboard.Summary.RunsTotal,
+                SuccessRate = FormatPercent(dashboard.Summary.SuccessRate),
+                FailureRate = FormatPercent(dashboard.Summary.FailureRate),
+                RetryRate = FormatPercent(dashboard.Summary.RetryRate),
+                HeartbeatCount = dashboard.Summary.HeartbeatCount,
+                ActiveWorkers = dashboard.Summary.ActiveWorkers,
+                P95DurationMs = FormatNumberOrFallback(dashboard.Summary.P95DurationMs)
+            },
+            Series = dashboard.Series
+                .Select(x => new DashboardSeriesPointData
+                {
+                    BucketStartUtc = FormatUtc(x.BucketStartUtc),
+                    RunStarted = x.RunStarted,
+                    RunSucceeded = x.RunSucceeded,
+                    RunFailed = x.RunFailed,
+                    RunRetried = x.RunRetried,
+                    HeartbeatCount = x.HeartbeatCount
+                })
+                .ToList(),
+            Workers = new DashboardWorkersData
+            {
+                StatusCounts = new DashboardWorkerStatusData
+                {
+                    Online = dashboard.Workers.StatusCounts.Online,
+                    Warn = dashboard.Workers.StatusCounts.Warn,
+                    Offline = dashboard.Workers.StatusCounts.Offline
+                },
+                Items = dashboard.Workers.Items
+                    .Select(x => new DashboardWorkerItemData
+                    {
+                        WorkerName = x.WorkerName,
+                        TenantDisplayName = string.IsNullOrWhiteSpace(x.TenantDisplayName) ? "N/A" : x.TenantDisplayName,
+                        Status = x.Status,
+                        LastSeenAtUtc = FormatUtc(x.LastSeenAtUtc),
+                        FreshnessSeconds = x.FreshnessSeconds,
+                        HeartbeatsPerMinute = x.HeartbeatsPerMinute.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture),
+                        LastJobName = x.LastJobName,
+                        LastJobOutcome = x.LastJobOutcome,
+                        SuccessRate = FormatPercent(x.SuccessRate),
+                        RunStarted = x.RunStarted,
+                        RunSucceeded = x.RunSucceeded,
+                        RunFailed = x.RunFailed,
+                        RunRetried = x.RunRetried,
+                        P95DurationMs = FormatNumberOrFallback(x.P95DurationMs)
+                    })
+                    .ToList()
+            },
+            RecentFailures = dashboard.RecentFailures
+                .Select(x => new DashboardFailureData
+                {
+                    OccurredAtUtc = FormatUtc(x.OccurredAtUtc),
+                    JobName = string.IsNullOrWhiteSpace(x.JobName) ? "(unknown)" : x.JobName,
+                    WorkerName = string.IsNullOrWhiteSpace(x.WorkerName) ? "(unknown)" : x.WorkerName,
+                    RunId = x.RunId?.ToString("D") ?? "N/A",
+                    Attempt = x.Attempt?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
+                    ErrorType = string.IsNullOrWhiteSpace(x.ErrorType) ? "N/A" : x.ErrorType,
+                    ErrorMessage = string.IsNullOrWhiteSpace(x.ErrorMessage) ? "N/A" : x.ErrorMessage,
+                    DurationMs = FormatNumberOrFallback(x.DurationMs)
+                })
+                .ToList()
         };
     }
 
@@ -82,5 +146,47 @@ public sealed class ReportsQueryService : IReportsQueryService
         }
 
         return [];
+    }
+
+    private static string MapTimeRangeToApiTimeframe(IReadOnlyDictionary<string, string> preferences)
+    {
+        if (!preferences.TryGetValue(PreferenceKeys.GlobalFilterTimeRange, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+        {
+            return "last_24h";
+        }
+
+        return rawValue.Trim() switch
+        {
+            "1h" => "last_hour",
+            "24h" => "last_24h",
+            "7d" => "last_7d",
+            "30d" => "last_30d",
+            _ => "last_24h"
+        };
+    }
+
+    private static string FormatPercent(double value)
+    {
+        return (value * 100d).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+    }
+
+    private static string FormatNumberOrFallback(double? value)
+    {
+        if (!value.HasValue)
+        {
+            return "N/A";
+        }
+
+        return value.Value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string FormatUtcOrFallback(DateTimeOffset? value)
+    {
+        return value.HasValue ? FormatUtc(value.Value) : "N/A";
+    }
+
+    private static string FormatUtc(DateTimeOffset value)
+    {
+        return value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", System.Globalization.CultureInfo.InvariantCulture);
     }
 }

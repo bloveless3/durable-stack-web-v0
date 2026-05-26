@@ -11,7 +11,8 @@ Welcome to the DurableStack docs.
 - [App build guide](build/app-build.md)
 - [API build guide](build/api-build.md)
 - [Telemetry ingest endpoint](api/events-batch.md)
-- [Report summary query endpoint](api/reports-summary-query.md)
+- [Dashboard V1 information architecture](api/reports-dashboard-v1.md)
+- [Dashboard query endpoint](api/reports-dashboard-query.md)
 - [Problem types](problems/auth-failed.md)
 
 ## Notes

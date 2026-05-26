@@ -6,21 +6,22 @@ namespace DurableStack.Api.Services;
 
 public interface IUserReportAccessService
 {
-    Task<UserReportScope> BuildScopeAsync(UserAccessContext user, ReportSummaryQueryRequest? request, CancellationToken cancellationToken = default);
+    Task<UserDashboardReportScope> BuildDashboardScopeAsync(UserAccessContext user, ReportDashboardQueryRequest? request, CancellationToken cancellationToken = default);
 }
 
-public sealed record UserReportScope(
+public sealed record UserDashboardReportScope(
     IReadOnlySet<Guid> OrganizationIds,
     IReadOnlySet<Guid> ProjectIds,
     IReadOnlySet<Guid> TenantIds,
+    string Timeframe,
+    string BucketSize,
+    TimeSpan BucketInterval,
     DateTimeOffset WindowStartUtc,
-    DateTimeOffset WindowEndUtc,
-    DateTimeOffset? IncrementalSinceUtc);
+    DateTimeOffset WindowEndUtc);
 
 public sealed class UserReportAccessService : IUserReportAccessService
 {
     private const int MaxFilterIds = 100;
-    private static readonly TimeSpan MaxWindow = TimeSpan.FromDays(90);
 
     private readonly ControlPlaneDbContext _controlPlaneDbContext;
 
@@ -29,43 +30,27 @@ public sealed class UserReportAccessService : IUserReportAccessService
         _controlPlaneDbContext = controlPlaneDbContext;
     }
 
-    public async Task<UserReportScope> BuildScopeAsync(UserAccessContext user, ReportSummaryQueryRequest? request, CancellationToken cancellationToken = default)
+    public async Task<UserDashboardReportScope> BuildDashboardScopeAsync(UserAccessContext user, ReportDashboardQueryRequest? request, CancellationToken cancellationToken = default)
     {
-        request ??= new ReportSummaryQueryRequest();
+        request ??= new ReportDashboardQueryRequest();
 
         ValidateSize(request.OrganizationIds, nameof(request.OrganizationIds));
         ValidateSize(request.ProjectIds, nameof(request.ProjectIds));
         ValidateSize(request.TenantIds, nameof(request.TenantIds));
 
         var now = DateTimeOffset.UtcNow;
-        var toUtc = request.ToUtc ?? now;
-        var fromUtc = request.FromUtc ?? toUtc.AddDays(-7);
-
-        DateTimeOffset? incrementalSinceUtc = null;
-
-        if (!string.IsNullOrWhiteSpace(request.SinceCursor))
+        var timeframe = NormalizeTimeframe(request.Timeframe);
+        var (windowSize, bucketInterval, bucketSize) = timeframe switch
         {
-            incrementalSinceUtc = ParseSinceCursor(request.SinceCursor);
-            if (incrementalSinceUtc > toUtc)
-            {
-                throw new UserReportScopeException("invalid_since_cursor", "SinceCursor cannot be later than the query end time.");
-            }
+            "last_hour" => (TimeSpan.FromHours(1), TimeSpan.FromMinutes(1), "1m"),
+            "last_24h" => (TimeSpan.FromHours(24), TimeSpan.FromMinutes(15), "15m"),
+            "last_7d" => (TimeSpan.FromDays(7), TimeSpan.FromHours(2), "2h"),
+            "last_30d" => (TimeSpan.FromDays(30), TimeSpan.FromHours(12), "12h"),
+            _ => throw new UserReportScopeException("invalid_timeframe", "Timeframe must be one of: last_hour, last_24h, last_7d, last_30d.")
+        };
 
-            if (incrementalSinceUtc > fromUtc)
-            {
-                fromUtc = incrementalSinceUtc.Value;
-            }
-        }
-
-        if (fromUtc > toUtc)
-        {
-            throw new UserReportScopeException("invalid_time_range", "FromUtc must be less than or equal to ToUtc.");
-        }
-
-        if (toUtc - fromUtc > MaxWindow)
-        {
-            throw new UserReportScopeException("invalid_time_range", "Requested time window exceeds maximum supported range (90 days).");
-        }
+        var toUtc = now;
+        var fromUtc = toUtc - windowSize;
 
         var organizationIds = await _controlPlaneDbContext.OrganizationMembers
             .AsNoTracking()
@@ -105,13 +90,15 @@ public sealed class UserReportAccessService : IUserReportAccessService
 
         tenantSet.IntersectWith(tenantIdsInProjects);
 
-        return new UserReportScope(
+        return new UserDashboardReportScope(
             organizationSet,
             projectSet,
             tenantSet,
+            timeframe,
+            bucketSize,
+            bucketInterval,
             fromUtc,
-            toUtc,
-            incrementalSinceUtc);
+            toUtc);
     }
 
     private static HashSet<Guid> ApplyRequestedFilter(IEnumerable<Guid> allowed, List<Guid> requested)
@@ -136,30 +123,14 @@ public sealed class UserReportAccessService : IUserReportAccessService
         }
     }
 
-    private static DateTimeOffset ParseSinceCursor(string cursor)
+    private static string NormalizeTimeframe(string? timeframe)
     {
-        var trimmed = cursor.Trim();
-
-        try
+        if (string.IsNullOrWhiteSpace(timeframe))
         {
-            var decoded = Convert.FromBase64String(trimmed);
-            var decodedText = System.Text.Encoding.UTF8.GetString(decoded);
+            return "last_24h";
+        }
 
-            if (!long.TryParse(decodedText, out var unixMilliseconds))
-            {
-                throw new UserReportScopeException("invalid_since_cursor", "SinceCursor is invalid.");
-            }
-
-            return DateTimeOffset.FromUnixTimeMilliseconds(unixMilliseconds);
-        }
-        catch (FormatException)
-        {
-            throw new UserReportScopeException("invalid_since_cursor", "SinceCursor is invalid.");
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            throw new UserReportScopeException("invalid_since_cursor", "SinceCursor is invalid.");
-        }
+        return timeframe.Trim().ToLowerInvariant();
     }
 }
 

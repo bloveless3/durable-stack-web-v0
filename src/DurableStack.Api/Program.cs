@@ -33,6 +33,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddScoped<IUserReportAccessService, UserReportAccessService>();
+builder.Services.AddScoped<IReportDashboardQueryService, ReportDashboardQueryService>();
 
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(userJwtOptions.SigningKey));
 
@@ -301,7 +302,8 @@ app.MapPost("/v1/events/batch", async (
             DurationMs = item.DurationMs,
             ErrorType = NormalizeOptional(item.ErrorType),
             ErrorMessage = errorMessage,
-            PayloadJson = NormalizeOptional(item.PayloadJson)
+            PayloadJson = NormalizeOptional(item.PayloadJson),
+            HeartbeatCount = TryExtractHeartbeatCount(item.EventType, item.PayloadJson)
         });
     }
 
@@ -330,12 +332,12 @@ app.MapPost("/v1/events/batch", async (
     return Results.Ok(ToResponse(batch, isDuplicate: false, correlationId));
 });
 
-app.MapPost("/v1/reports/summary/query", async (
+app.MapPost("/v1/reports/dashboard/query", async (
     HttpContext context,
-    ReportSummaryQueryRequest? payload,
+    ReportDashboardQueryRequest? payload,
     ControlPlaneDbContext controlPlaneDb,
-    TelemetryDbContext telemetryDb,
     IUserReportAccessService accessService,
+    IReportDashboardQueryService dashboardQueryService,
     CancellationToken cancellationToken) =>
 {
     var correlationId = ResolveCorrelationId(context);
@@ -351,11 +353,11 @@ app.MapPost("/v1/reports/summary/query", async (
             code: "invalid_user_token");
     }
 
-    UserReportScope scope;
+    UserDashboardReportScope scope;
 
     try
     {
-        scope = await accessService.BuildScopeAsync(user, payload, cancellationToken);
+        scope = await accessService.BuildDashboardScopeAsync(user, payload, cancellationToken);
     }
     catch (UserReportScopeException ex)
     {
@@ -368,57 +370,57 @@ app.MapPost("/v1/reports/summary/query", async (
             code: ex.Code);
     }
 
+    var queryRunAtUtc = DateTimeOffset.UtcNow;
+
     if (scope.TenantIds.Count == 0)
     {
-        var emptyRunAtUtc = DateTimeOffset.UtcNow;
-
-        return Results.Ok(new ReportSummaryResponse
+        return Results.Ok(new ReportDashboardResponse
         {
-            TotalEvents = 0,
-            FailedEvents = 0,
-            LastEventAtUtc = null,
             ScopeTenantIds = [],
+            Timeframe = scope.Timeframe,
             WindowStartUtc = scope.WindowStartUtc,
             WindowEndUtc = scope.WindowEndUtc,
-            QueryRunAtUtc = emptyRunAtUtc,
-            NextCursor = BuildCursor(emptyRunAtUtc)
+            BucketSize = scope.BucketSize,
+            QueryRunAtUtc = queryRunAtUtc,
+            Summary = new ReportDashboardSummary()
         });
     }
 
-    var tenantPublicIds = await controlPlaneDb.Tenants
+    var tenantMappings = await controlPlaneDb.Tenants
         .AsNoTracking()
         .Where(x => scope.TenantIds.Contains(x.Id))
-        .Select(x => x.PublicTenantId)
+        .Select(x => new
+        {
+            x.Id,
+            x.PublicTenantId,
+            x.EnvironmentName,
+            ProjectName = x.Project != null ? x.Project.Name : null
+        })
         .ToListAsync(cancellationToken);
 
-    var events = telemetryDb.TelemetryEvents
-        .AsNoTracking()
-        .Where(x =>
-            x.Batch != null &&
-            tenantPublicIds.Contains(x.Batch.TenantPublicId) &&
-            x.OccurredAtUtc >= scope.WindowStartUtc &&
-            x.OccurredAtUtc <= scope.WindowEndUtc);
+    var scopeTenantIds = tenantMappings
+        .Select(x => x.Id.ToString("D"))
+        .ToArray();
 
-    var totalEvents = await events.CountAsync(cancellationToken);
-    var failedEvents = await events.CountAsync(x => x.EventType == "job_failed", cancellationToken);
-    var lastEventAtUtc = await events
-        .OrderByDescending(x => x.OccurredAtUtc)
-        .Select(x => (DateTimeOffset?)x.OccurredAtUtc)
-        .FirstOrDefaultAsync(cancellationToken);
+    var tenantPublicIds = tenantMappings
+        .Select(x => x.PublicTenantId)
+        .ToArray();
 
-    var queryRunAtUtc = DateTimeOffset.UtcNow;
+    var tenantDisplayByPublicId = tenantMappings
+        .ToDictionary(
+            x => x.PublicTenantId,
+            x => BuildTenantDisplayName(x.ProjectName, x.EnvironmentName),
+            StringComparer.Ordinal);
 
-    return Results.Ok(new ReportSummaryResponse
-    {
-        TotalEvents = totalEvents,
-        FailedEvents = failedEvents,
-        LastEventAtUtc = lastEventAtUtc,
-        ScopeTenantIds = scope.TenantIds.Select(x => x.ToString("D")).ToArray(),
-        WindowStartUtc = scope.WindowStartUtc,
-        WindowEndUtc = scope.WindowEndUtc,
-        QueryRunAtUtc = queryRunAtUtc,
-        NextCursor = BuildCursor(queryRunAtUtc)
-    });
+    var response = await dashboardQueryService.QueryAsync(
+        scope,
+        tenantPublicIds,
+        scopeTenantIds,
+        tenantDisplayByPublicId,
+        queryRunAtUtc,
+        cancellationToken);
+
+    return Results.Ok(response);
 }).RequireAuthorization("ReportsRead");
 
 app.Run();
@@ -645,6 +647,39 @@ static string? NormalizeOptional(string? value)
     return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
+static int? TryExtractHeartbeatCount(string eventType, string? payloadJson)
+{
+    if (!string.Equals(eventType?.Trim(), "worker_heartbeat_batch", StringComparison.Ordinal))
+    {
+        return null;
+    }
+
+    if (string.IsNullOrWhiteSpace(payloadJson))
+    {
+        return 0;
+    }
+
+    try
+    {
+        using var document = JsonDocument.Parse(payloadJson);
+        if (!document.RootElement.TryGetProperty("heartbeatCount", out var heartbeatElement))
+        {
+            return 0;
+        }
+
+        if (!heartbeatElement.TryGetInt32(out var heartbeatCount))
+        {
+            return 0;
+        }
+
+        return heartbeatCount < 0 ? 0 : heartbeatCount;
+    }
+    catch (JsonException)
+    {
+        return 0;
+    }
+}
+
 static string? TryGetFirstHeaderValue(IHeaderDictionary headers, string key)
 {
     if (!headers.TryGetValue(key, out StringValues values))
@@ -661,6 +696,19 @@ static string? TryGetFirstHeaderValue(IHeaderDictionary headers, string key)
     }
 
     return null;
+}
+
+static string BuildTenantDisplayName(string? projectName, string? environmentName)
+{
+    var normalizedProject = string.IsNullOrWhiteSpace(projectName)
+        ? "Project"
+        : projectName.Trim();
+
+    var normalizedEnvironment = string.IsNullOrWhiteSpace(environmentName)
+        ? "Environment"
+        : environmentName.Trim();
+
+    return $"{normalizedProject} - {normalizedEnvironment}";
 }
 
 static bool IsIdempotencyConflict(DbUpdateException exception)
@@ -681,12 +729,6 @@ static string NormalizeDocsBaseUrl(string? configuredBaseUrl)
 static string BuildProblemTypeUrl(string docsBaseUrl, string slug)
 {
     return $"{docsBaseUrl}/problems/{slug}";
-}
-
-static string BuildCursor(DateTimeOffset value)
-{
-    var unixMilliseconds = value.ToUnixTimeMilliseconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
-    return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(unixMilliseconds));
 }
 
 public partial class Program;

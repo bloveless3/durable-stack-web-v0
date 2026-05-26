@@ -18,15 +18,13 @@ This guide describes the current App-side architecture and requirements for BFF 
 
 - App should call API with user bearer tokens, not tenant client secrets.
 - App must pass selected global filters as report query payload.
-- App should support incremental polling via cursor:
-  - send `sinceCursor` from prior response
-  - use `queryRunAtUtc` + `nextCursor` from API response
+- App polls full-window dashboard query every 15 seconds to keep UI authoritative.
 
 ## Phase 3 implementation status
 
 - App issues short-lived user JWTs server-side for `reports.read`.
-- App uses BFF endpoint `POST /api/reports/dashboard-summary` to query API.
-- Dashboard auto-refresh polls every 15 seconds and forwards `sinceCursor` incrementally.
+- App uses BFF endpoint `GET /api/reports/dashboard` to query API.
+- Dashboard auto-refresh polls every 15 seconds using full-window authoritative refresh.
 - Dashboard refresh button performs an immediate manual query.
 - Correlation IDs are forwarded from App to API per request.
 

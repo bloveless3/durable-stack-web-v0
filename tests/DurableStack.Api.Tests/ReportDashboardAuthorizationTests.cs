@@ -20,10 +20,10 @@ using Xunit;
 
 namespace DurableStack.Api.Tests;
 
-public sealed class ReportSummaryAuthorizationTests
+public sealed class ReportDashboardAuthorizationTests
 {
     [Fact]
-    public async Task ReportSummaryQuery_WithoutBearerToken_ReturnsUnauthorized()
+    public async Task ReportDashboardQuery_WithoutBearerToken_ReturnsUnauthorized()
     {
         using var factory = new DurableStackApiFactory();
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -31,12 +31,12 @@ public sealed class ReportSummaryAuthorizationTests
             BaseAddress = new Uri("https://localhost")
         });
 
-        var response = await client.PostAsJsonAsync("/v1/reports/summary/query", new ReportSummaryQueryRequest());
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest());
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task ReportSummaryQuery_WithoutReportsReadScope_ReturnsForbidden()
+    public async Task ReportDashboardQuery_WithoutReportsReadScope_ReturnsForbidden()
     {
         using var factory = new DurableStackApiFactory();
         var user = await factory.SeedUserScopeAsync();
@@ -48,16 +48,16 @@ public sealed class ReportSummaryAuthorizationTests
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "profile.read"));
 
-        var response = await client.PostAsJsonAsync("/v1/reports/summary/query", new ReportSummaryQueryRequest());
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest());
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
-    public async Task ReportSummaryQuery_WithAuthorizedScope_ReturnsTenantScopedSummary()
+    public async Task ReportDashboardQuery_WithAuthorizedScope_ReturnsDashboardPayload()
     {
         using var factory = new DurableStackApiFactory();
         var user = await factory.SeedUserScopeAsync();
-        await factory.SeedTelemetryAsync(user.AllowedTenantPublicId);
+        await factory.SeedDashboardTelemetryAsync(user.AllowedTenantPublicId);
 
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -67,27 +67,29 @@ public sealed class ReportSummaryAuthorizationTests
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
 
-        var query = new ReportSummaryQueryRequest
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest
         {
             TenantIds = [user.AllowedTenantId],
-            FromUtc = DateTimeOffset.UtcNow.AddHours(-1),
-            ToUtc = DateTimeOffset.UtcNow.AddHours(1)
-        };
+            Timeframe = "last_hour"
+        });
 
-        var response = await client.PostAsJsonAsync("/v1/reports/summary/query", query);
-        var body = await response.Content.ReadFromJsonAsync<ReportSummaryResponse>();
+        var body = await response.Content.ReadFromJsonAsync<ReportDashboardResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(body);
-        Assert.Equal(2, body.TotalEvents);
-        Assert.Equal(1, body.FailedEvents);
-        Assert.Contains(user.AllowedTenantId.ToString("D"), body.ScopeTenantIds);
-        Assert.NotNull(body.NextCursor);
-        Assert.True(body.QueryRunAtUtc > DateTimeOffset.MinValue);
+        Assert.Equal("last_hour", body.Timeframe);
+        Assert.Equal("1m", body.BucketSize);
+        Assert.True(body.Series.Count >= 1);
+        Assert.Equal(1, body.Summary.RunStarted);
+        Assert.Equal(1, body.Summary.RunSucceeded);
+        Assert.Equal(0, body.Summary.RunFailed);
+        Assert.Equal(10, body.Summary.HeartbeatCount);
+        Assert.Equal("Report Project - Production", body.Workers.Items[0].TenantDisplayName);
+        Assert.Contains(body.Workers.Items, x => x.WorkerName == "worker-a");
     }
 
     [Fact]
-    public async Task ReportSummaryQuery_RequestingUnauthorizedTenant_ReturnsEmptySummary()
+    public async Task ReportDashboardQuery_RequestingUnauthorizedTenant_ReturnsEmptyDashboard()
     {
         using var factory = new DurableStackApiFactory();
         var user = await factory.SeedUserScopeAsync();
@@ -100,23 +102,22 @@ public sealed class ReportSummaryAuthorizationTests
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
 
-        var query = new ReportSummaryQueryRequest
+        var query = new ReportDashboardQueryRequest
         {
             TenantIds = [Guid.NewGuid()]
         };
 
-        var response = await client.PostAsJsonAsync("/v1/reports/summary/query", query);
-        var body = await response.Content.ReadFromJsonAsync<ReportSummaryResponse>();
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/query", query);
+        var body = await response.Content.ReadFromJsonAsync<ReportDashboardResponse>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(body);
-        Assert.Equal(0, body.TotalEvents);
+        Assert.Equal(0, body.Summary.RunsTotal);
         Assert.Empty(body.ScopeTenantIds);
-        Assert.NotNull(body.NextCursor);
     }
 
     [Fact]
-    public async Task ReportSummaryQuery_WithInvalidSinceCursor_ReturnsBadRequest()
+    public async Task ReportDashboardQuery_WithInvalidTimeframe_ReturnsBadRequest()
     {
         using var factory = new DurableStackApiFactory();
         var user = await factory.SeedUserScopeAsync();
@@ -129,56 +130,15 @@ public sealed class ReportSummaryAuthorizationTests
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
 
-        var query = new ReportSummaryQueryRequest
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest
         {
-            SinceCursor = "not-a-valid-cursor"
-        };
+            Timeframe = "all_time"
+        });
 
-        var response = await client.PostAsJsonAsync("/v1/reports/summary/query", query);
         var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("invalid_since_cursor", json.RootElement.GetProperty("code").GetString());
-    }
-
-    [Fact]
-    public async Task ReportSummaryQuery_SupportsIncrementalCursorPolling()
-    {
-        using var factory = new DurableStackApiFactory();
-        var user = await factory.SeedUserScopeAsync();
-        await factory.SeedTelemetryAsync(user.AllowedTenantPublicId);
-
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            BaseAddress = new Uri("https://localhost")
-        });
-
-        client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
-
-        var firstResponse = await client.PostAsJsonAsync("/v1/reports/summary/query", new ReportSummaryQueryRequest
-        {
-            TenantIds = [user.AllowedTenantId]
-        });
-
-        var firstBody = await firstResponse.Content.ReadFromJsonAsync<ReportSummaryResponse>();
-        Assert.NotNull(firstBody);
-        Assert.NotNull(firstBody.NextCursor);
-
-        await Task.Delay(20);
-        await factory.SeedTelemetryEventAsync(user.AllowedTenantPublicId, "job_completed");
-
-        var incrementalResponse = await client.PostAsJsonAsync("/v1/reports/summary/query", new ReportSummaryQueryRequest
-        {
-            TenantIds = [user.AllowedTenantId],
-            SinceCursor = firstBody.NextCursor
-        });
-
-        var incrementalBody = await incrementalResponse.Content.ReadFromJsonAsync<ReportSummaryResponse>();
-        Assert.NotNull(incrementalBody);
-        Assert.Equal(HttpStatusCode.OK, incrementalResponse.StatusCode);
-        Assert.True(incrementalBody.TotalEvents >= 1);
-        Assert.NotEqual(firstBody.NextCursor, incrementalBody.NextCursor);
+        Assert.Equal("invalid_timeframe", json.RootElement.GetProperty("code").GetString());
     }
 
     private sealed class DurableStackApiFactory : WebApplicationFactory<Program>
@@ -267,7 +227,7 @@ public sealed class ReportSummaryAuthorizationTests
             return new SeededUserScope(userId, tenant.Id, tenant.PublicTenantId);
         }
 
-        public async Task SeedTelemetryAsync(string tenantPublicId)
+        public async Task SeedDashboardTelemetryAsync(string tenantPublicId)
         {
             using var scope = Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<TelemetryDbContext>();
@@ -277,7 +237,7 @@ public sealed class ReportSummaryAuthorizationTests
                 Id = Guid.NewGuid(),
                 TenantPublicId = tenantPublicId,
                 ReceivedAtUtc = DateTimeOffset.UtcNow,
-                AcceptedCount = 2,
+                AcceptedCount = 3,
                 RejectedCount = 0
             };
 
@@ -285,45 +245,35 @@ public sealed class ReportSummaryAuthorizationTests
             {
                 Id = Guid.NewGuid(),
                 BatchId = batch.Id,
-                EventType = "job_completed",
-                EventVersion = 1,
-                OccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-10)
+                EventType = "job_started",
+                EventVersion = 2,
+                OccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-2),
+                WorkerName = "worker-a",
+                JobName = "heartbeat-every-minute"
             });
 
             batch.Events.Add(new TelemetryEvent
             {
                 Id = Guid.NewGuid(),
                 BatchId = batch.Id,
-                EventType = "job_failed",
-                EventVersion = 1,
-                OccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5)
+                EventType = "job_succeeded",
+                EventVersion = 2,
+                OccurredAtUtc = DateTimeOffset.UtcNow.AddMinutes(-2),
+                WorkerName = "worker-a",
+                JobName = "heartbeat-every-minute",
+                DurationMs = 8.4
             });
-
-            db.TelemetryBatches.Add(batch);
-            await db.SaveChangesAsync();
-        }
-
-        public async Task SeedTelemetryEventAsync(string tenantPublicId, string eventType)
-        {
-            using var scope = Services.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<TelemetryDbContext>();
-
-            var batch = new TelemetryBatch
-            {
-                Id = Guid.NewGuid(),
-                TenantPublicId = tenantPublicId,
-                ReceivedAtUtc = DateTimeOffset.UtcNow,
-                AcceptedCount = 1,
-                RejectedCount = 0
-            };
 
             batch.Events.Add(new TelemetryEvent
             {
                 Id = Guid.NewGuid(),
                 BatchId = batch.Id,
-                EventType = eventType,
-                EventVersion = 1,
-                OccurredAtUtc = DateTimeOffset.UtcNow
+                EventType = "worker_heartbeat_batch",
+                EventVersion = 2,
+                OccurredAtUtc = DateTimeOffset.UtcNow.AddSeconds(-4),
+                WorkerName = "worker-a",
+                HeartbeatCount = 10,
+                PayloadJson = "{\"heartbeatCount\":10}"
             });
 
             db.TelemetryBatches.Add(batch);

@@ -30,5 +30,7 @@ public sealed class TelemetryEvent
 
     public string? PayloadJson { get; set; }
 
+    public int? HeartbeatCount { get; set; }
+
     public TelemetryBatch? Batch { get; set; }
 }

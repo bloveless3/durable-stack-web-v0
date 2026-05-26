@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DurableStack.Platform.Contracts;
 
-public sealed class ReportSummaryQueryRequest
+public sealed class ReportDashboardQueryRequest
 {
     public List<Guid> OrganizationIds { get; set; } = new();
 
@@ -11,9 +11,5 @@ public sealed class ReportSummaryQueryRequest
 
     public List<Guid> TenantIds { get; set; } = new();
 
-    public DateTimeOffset? FromUtc { get; set; }
-
-    public DateTimeOffset? ToUtc { get; set; }
-
-    public string? SinceCursor { get; set; }
+    public string Timeframe { get; set; } = "last_24h";
 }

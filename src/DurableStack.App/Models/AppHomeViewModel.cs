@@ -15,13 +15,4 @@ public sealed class AppHomeViewModel
     public int? FailedEvents { get; set; }
 
     public string LastEventAtUtc { get; set; } = "N/A";
-
-    public string? NextCursor { get; set; }
-
-    public string[] BuildNextItems { get; set; } =
-    [
-        "Add dashboard widget-level trend cards",
-        "Add operational health report sections using shared BFF query service",
-        "Add richer no-data and stale-data states for each widget"
-    ];
 }

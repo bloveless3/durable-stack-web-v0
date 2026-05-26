@@ -16,66 +16,118 @@
     </span>
 }
 
-<section class="metrics-grid" aria-label="Health metrics">
-    <article class="metric-card">
-        <p class="metric-label">Dashboard</p>
-        <p class="metric-value" data-dashboard-status>@Model.DashboardStatus</p>
+<section class="metrics-grid" aria-label="Dashboard KPI metrics">
+    <article class="metric-card metric-card-runs">
+        <p class="metric-label">Runs</p>
+        <p class="metric-value" data-kpi-runs-total>--</p>
+    </article>
+    <article class="metric-card metric-card-success">
+        <p class="metric-label">Success Rate</p>
+        <p class="metric-value" data-kpi-success-rate>--</p>
+    </article>
+    <article class="metric-card metric-card-failure">
+        <p class="metric-label">Failure Rate</p>
+        <p class="metric-value" data-kpi-failure-rate>--</p>
+    </article>
+    <article class="metric-card metric-card-retry">
+        <p class="metric-label">Retry Rate</p>
+        <p class="metric-value" data-kpi-retry-rate>--</p>
     </article>
     <article class="metric-card">
-        <p class="metric-label">Data Source</p>
-        <p class="metric-value metric-value-small">@Model.DataSource</p>
+        <p class="metric-label">Active Workers</p>
+        <p class="metric-value" data-kpi-active-workers>--</p>
     </article>
     <article class="metric-card">
-        <p class="metric-label">Total Events</p>
-        <p class="metric-value" data-total-events>@(Model.TotalEvents?.ToString() ?? "--")</p>
-    </article>
-    <article class="metric-card">
-        <p class="metric-label">Failed Events</p>
-        <p class="metric-value" data-failed-events>@(Model.FailedEvents?.ToString() ?? "--")</p>
+        <p class="metric-label">P95 Duration (ms)</p>
+        <p class="metric-value" data-kpi-p95-duration>--</p>
     </article>
 </section>
 
-<section class="panel-grid">
-    <article class="panel-card">
+<section class="dashboard-layout" aria-label="Operational dashboard">
+    <article class="panel-card dashboard-main-panel">
         <header class="panel-header">
-            <h2>Recent telemetry</h2>
-            <span class="panel-meta">UTC</span>
+            <h2>Run and heartbeat timeline</h2>
+            <span class="panel-meta" data-dashboard-timeframe>--</span>
         </header>
-        <dl class="detail-list">
-            <div>
-                <dt>Last Event</dt>
-                <dd data-last-event>@Model.LastEventAtUtc</dd>
-            </div>
-            <div>
-                <dt>Refresh</dt>
-                <dd>@Model.RefreshCadence (automatic)</dd>
-            </div>
-            <div>
-                <dt>Last Query</dt>
-                <dd data-last-query>@Model.LastUpdateLabel</dd>
-            </div>
-            <div>
-                <dt>Feed State</dt>
-                <dd data-dashboard-feed-state>Fresh</dd>
-            </div>
-        </dl>
+        <div class="chart-shell" data-dashboard-chart-shell>
+            <div class="runs-chart" data-runs-chart role="img" aria-label="Run activity chart"></div>
+            <p class="chart-empty" data-runs-chart-empty hidden>No events in this window yet.</p>
+        </div>
+        <div class="chart-legend" aria-label="Chart legend">
+            <span><i class="legend-swatch legend-started"></i> Started</span>
+            <span><i class="legend-swatch legend-succeeded"></i> Succeeded</span>
+            <span><i class="legend-swatch legend-failed"></i> Failed</span>
+            <span><i class="legend-swatch legend-retried"></i> Retried</span>
+            <span><i class="legend-swatch legend-heartbeats"></i> Heartbeats</span>
+        </div>
     </article>
 
-    <article class="panel-card">
+    <article class="panel-card dashboard-worker-panel">
         <header class="panel-header">
-            <h2>Build next</h2>
+            <h2>Worker health</h2>
+            <span class="panel-meta">Live by freshness</span>
         </header>
-        <ul class="task-list">
-            @foreach (var item in Model.BuildNextItems)
-            {
-                <li>@item</li>
-            }
-        </ul>
+        <div class="worker-status-pill-row">
+            <span class="worker-status-pill status-online">Online <strong data-worker-online-count>0</strong></span>
+            <span class="worker-status-pill status-warn">Warn <strong data-worker-warn-count>0</strong></span>
+            <span class="worker-status-pill status-offline">Offline <strong data-worker-offline-count>0</strong></span>
+        </div>
+        <div class="worker-list" data-worker-list></div>
     </article>
 </section>
 
-<input type="hidden" value="@(Model.NextCursor ?? string.Empty)" data-dashboard-next-cursor />
+<section class="panel-card dashboard-failures-panel" aria-label="Recent failures">
+    <header class="panel-header">
+        <h2>Recent failures</h2>
+        <span class="panel-meta">Most recent 50</span>
+    </header>
+    <div class="dashboard-failure-table-wrap">
+        <table class="dashboard-failure-table">
+            <thead>
+                <tr>
+                    <th>Time (UTC)</th>
+                    <th>Job</th>
+                    <th>Worker</th>
+                    <th>Error</th>
+                    <th>Message</th>
+                    <th>Run</th>
+                </tr>
+            </thead>
+            <tbody data-failures-table-body>
+                <tr>
+                    <td colspan="6" class="dashboard-empty-row">Waiting for telemetry.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel-card dashboard-meta-panel" aria-label="Dashboard metadata">
+    <dl class="detail-list">
+        <div>
+            <dt>Dashboard State</dt>
+            <dd data-dashboard-status>@Model.DashboardStatus</dd>
+        </div>
+        <div>
+            <dt>Data Source</dt>
+            <dd class="metric-value-small">@Model.DataSource</dd>
+        </div>
+        <div>
+            <dt>Last Event</dt>
+            <dd data-last-event>@Model.LastEventAtUtc</dd>
+        </div>
+        <div>
+            <dt>Last Query</dt>
+            <dd data-last-query>@Model.LastUpdateLabel</dd>
+        </div>
+        <div>
+            <dt>Feed State</dt>
+            <dd data-dashboard-feed-state>Fresh</dd>
+        </div>
+    </dl>
+</section>
 
 @section Scripts {
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
     <script src="~/js/pages/overview-page.js" asp-append-version="true"></script>
 }

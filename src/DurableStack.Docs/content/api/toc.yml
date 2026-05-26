@@ -1,4 +1,6 @@
 - name: POST /v1/events/batch
   href: events-batch.md
-- name: POST /v1/reports/summary/query
-  href: reports-summary-query.md
+- name: Dashboard V1 information architecture
+  href: reports-dashboard-v1.md
+- name: POST /v1/reports/dashboard/query
+  href: reports-dashboard-query.md
