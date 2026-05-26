@@ -49,7 +49,7 @@ Rules:
 5. `Active workers`
 6. `P95 duration (ms)`
 
-## Main panel (left 3/4)
+## Main panel (left 2/3)
 
 Combo chart over selected timeframe:
 
@@ -59,7 +59,7 @@ Combo chart over selected timeframe:
 - Line: `runRetried`
 - Area: `heartbeatCount` (secondary axis)
 
-## Worker panel (right 1/4)
+## Worker panel (right 1/3)
 
 Worker cards grouped by current status:
 
@@ -133,18 +133,22 @@ To support high tenant volume and large telemetry growth, v1 dashboard query des
   - `telemetry_events(worker_name, occurred_at_utc)`
 - Strictly capped grouped failure table size per request (`TOP 50` / `LIMIT 50`).
 
+Current implementation notes:
+
+1. Dashboard query can run in hybrid mode behind feature flag (`TelemetryLifecycle:Query:EnableHybridRollupReads`):
+   - raw for most recent aligned hour window
+   - rollups for older buckets
+2. If historical raw data exists but rollups are not available for that historical segment, query falls back to full-window raw reads to avoid partial/missing results.
+
 Recommended next optimizations after v1:
 
-1. Keep v1 dashboard on raw telemetry data for near-real-time freshness; evaluate incremental rollup tables by tenant + bucket (`1m`, `15m`, `2h`, `12h`) only if query latency or cost trends require it.
-2. Add table partitioning by time (monthly/daily depending on ingest volume).
-3. Add retention tiers (raw events short retention, rollups long retention).
-4. Consider background worker status snapshots for instant right-panel load.
-5. Add query-level cache keyed by `(scope hash + timeframe)` with short TTL (15-30s).
+1. Add table partitioning by time (monthly/daily depending on ingest volume).
+2. Consider background worker status snapshots for instant right-panel load.
+3. Add query-level cache keyed by `(scope hash + timeframe)` with short TTL (15-30s).
 
 ## Next Steps
 
 1. Add tenant-scale load testing for `last_hour` and `last_24h` dashboard query latency and p95/p99 tracking.
 2. Add backend short-lived cache for identical dashboard queries (scope + timeframe) with 15-30 second TTL.
-3. Add client-side timezone display toggle while preserving UTC in API contracts.
-4. Add dashboard integration tests for stale-state and no-data rendering paths in the App.
-5. Reassess rollup table need only if sustained production load shows query latency or cost pressure.
+3. Add dashboard integration tests for stale-state and no-data rendering paths in the App.
+4. Wire `ExecutionMode=durablestack` once package integration is available.

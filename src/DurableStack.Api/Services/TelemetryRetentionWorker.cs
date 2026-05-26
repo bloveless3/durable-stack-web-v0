@@ -14,15 +14,18 @@ public sealed class TelemetryRetentionJob : ITelemetryRetentionJob
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<TelemetryLifecycleOptions> _options;
     private readonly ILogger<TelemetryRetentionJob> _logger;
+    private readonly TelemetryLifecycleMetrics _metrics;
 
     public TelemetryRetentionJob(
         IServiceScopeFactory scopeFactory,
         IOptionsMonitor<TelemetryLifecycleOptions> options,
-        ILogger<TelemetryRetentionJob> logger)
+        ILogger<TelemetryRetentionJob> logger,
+        TelemetryLifecycleMetrics metrics)
     {
         _scopeFactory = scopeFactory;
         _options = options;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task RunOnceAsync(CancellationToken cancellationToken = default)
@@ -71,6 +74,7 @@ public sealed class TelemetryRetentionJob : ITelemetryRetentionJob
             var bucket15mCutoff = GetBucketCutoff(cutoffUtc, "15m");
             if (!await HasRollupCoverageAsync(telemetryDb, tenantPublicId, "15m", bucket15mCutoff, cancellationToken))
             {
+                _metrics.RecordRetentionSkipped("watermark_not_ready");
                 _logger.LogWarning(
                     "Skipping retention for tenant {TenantPublicId} because watermark is not caught up to cutoff {CutoffUtc}.",
                     tenantPublicId,
@@ -113,6 +117,7 @@ public sealed class TelemetryRetentionJob : ITelemetryRetentionJob
                 await telemetryDb.TelemetryEvents
                     .Where(x => x.Batch != null && x.Batch.TenantPublicId == tenantPublicId && x.OccurredAtUtc < cutoffUtc)
                     .ExecuteDeleteAsync(cancellationToken);
+                _metrics.RecordRetentionRowsAffected("telemetry_events", rawDeleteCount);
             }
 
             if (rawBatchDeleteCount > 0)
@@ -120,6 +125,7 @@ public sealed class TelemetryRetentionJob : ITelemetryRetentionJob
                 await telemetryDb.TelemetryBatches
                     .Where(x => x.TenantPublicId == tenantPublicId && x.ReceivedAtUtc < cutoffUtc)
                     .ExecuteDeleteAsync(cancellationToken);
+                _metrics.RecordRetentionRowsAffected("telemetry_batches", rawBatchDeleteCount);
             }
 
             if (rollupDeleteCount > 0)
@@ -127,6 +133,7 @@ public sealed class TelemetryRetentionJob : ITelemetryRetentionJob
                 await telemetryDb.TelemetryBucketRollups
                     .Where(x => x.TenantPublicId == tenantPublicId && x.BucketStartUtc < cutoffUtc)
                     .ExecuteDeleteAsync(cancellationToken);
+                _metrics.RecordRetentionRowsAffected("telemetry_bucket_rollups", rollupDeleteCount);
             }
 
             if (failureRollupDeleteCount > 0)
@@ -134,6 +141,7 @@ public sealed class TelemetryRetentionJob : ITelemetryRetentionJob
                 await telemetryDb.TelemetryFailureGroupRollups
                     .Where(x => x.TenantPublicId == tenantPublicId && x.BucketStartUtc < cutoffUtc)
                     .ExecuteDeleteAsync(cancellationToken);
+                _metrics.RecordRetentionRowsAffected("telemetry_failure_group_rollups", failureRollupDeleteCount);
             }
 
             _logger.LogInformation(

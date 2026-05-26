@@ -37,6 +37,7 @@ builder.Services.AddOptions<TelemetryLifecycleOptions>()
     .ValidateOnStart();
 builder.Services.AddScoped<IUserReportAccessService, UserReportAccessService>();
 builder.Services.AddScoped<IReportDashboardQueryService, ReportDashboardQueryService>();
+builder.Services.AddSingleton<TelemetryLifecycleMetrics>();
 builder.Services.AddSingleton<ITelemetryRollupJob, TelemetryRollupJob>();
 builder.Services.AddSingleton<ITelemetryRetentionJob, TelemetryRetentionJob>();
 builder.Services.AddHostedService<LocalTelemetryLifecycleScheduler>();

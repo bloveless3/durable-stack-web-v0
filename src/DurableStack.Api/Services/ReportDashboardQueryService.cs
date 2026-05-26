@@ -3,6 +3,7 @@ using DurableStack.Telemetry;
 using DurableStack.Telemetry.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 
 namespace DurableStack.Api.Services;
 
@@ -27,13 +28,16 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
 
     private readonly TelemetryDbContext _telemetryDb;
     private readonly IOptionsMonitor<TelemetryLifecycleOptions> _lifecycleOptions;
+    private readonly TelemetryLifecycleMetrics _metrics;
 
     public ReportDashboardQueryService(
         TelemetryDbContext telemetryDb,
-        IOptionsMonitor<TelemetryLifecycleOptions> lifecycleOptions)
+        IOptionsMonitor<TelemetryLifecycleOptions> lifecycleOptions,
+        TelemetryLifecycleMetrics metrics)
     {
         _telemetryDb = telemetryDb;
         _lifecycleOptions = lifecycleOptions;
+        _metrics = metrics;
     }
 
     public async Task<ReportDashboardResponse> QueryAsync(
@@ -44,8 +48,11 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
         DateTimeOffset queryRunAtUtc,
         CancellationToken cancellationToken = default)
     {
+        var timer = Stopwatch.StartNew();
+
         if (tenantPublicIds.Count == 0)
         {
+            _metrics.RecordDashboardQuery(scope.Timeframe, hybridRequested: false, hybridApplied: false, durationMs: timer.Elapsed.TotalMilliseconds, rawRowsScanned: 0, rollupBucketsRead: 0, failureRollupGroupsRead: 0);
             return CreateEmpty(scope, scopeTenantIds, queryRunAtUtc);
         }
 
@@ -57,8 +64,9 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
                 x.OccurredAtUtc >= scope.WindowStartUtc &&
                 x.OccurredAtUtc < scope.WindowEndUtc);
 
-        var hybridEnabled = _lifecycleOptions.CurrentValue.Query.EnableHybridRollupReads &&
+        var hybridRequested = _lifecycleOptions.CurrentValue.Query.EnableHybridRollupReads &&
                             !string.Equals(scope.Timeframe, "last_hour", StringComparison.Ordinal);
+        var hybridEnabled = hybridRequested;
 
         var rawRecentWindowStartUtc = scope.WindowStartUtc;
         var rollupWindowStartUtc = scope.WindowStartUtc;
@@ -103,6 +111,19 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
                     x.BucketStartUtc >= rollupWindowStartUtc &&
                     x.BucketStartUtc < rollupWindowEndUtc)
                 .ToListAsync(cancellationToken);
+
+            var historicalRawExists = await filteredEvents
+                .Where(x => x.OccurredAtUtc < rawRecentWindowStartUtc)
+                .AnyAsync(cancellationToken);
+
+            if (historicalRawExists && rollupRows.Count == 0)
+            {
+                hybridEnabled = false;
+                rawRecentWindowStartUtc = scope.WindowStartUtc;
+                rawRecentEvents = filteredEvents;
+                rollupRows = [];
+                failureRollupRows = [];
+            }
         }
 
         var summaryAggregate = await rawRecentEvents
@@ -117,6 +138,15 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
                 LastEventAtUtc = g.Max(x => (DateTimeOffset?)x.OccurredAtUtc)
             })
             .SingleOrDefaultAsync(cancellationToken);
+
+        long rawRowsScanned = await rawRecentEvents
+            .Where(x =>
+                x.EventType == EventJobStarted ||
+                x.EventType == EventJobSucceeded ||
+                x.EventType == EventJobFailed ||
+                x.EventType == EventJobRetried ||
+                x.EventType == EventWorkerHeartbeatBatch)
+            .LongCountAsync(cancellationToken);
 
         var runStarted = (summaryAggregate?.RunStarted ?? 0) + rollupRows.Sum(x => x.RunStarted);
         var runSucceeded = (summaryAggregate?.RunSucceeded ?? 0) + rollupRows.Sum(x => x.RunSucceeded);
@@ -231,6 +261,15 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
             .ToList();
 
         summary.ActiveWorkers = workers.StatusCounts.Online + workers.StatusCounts.Warn;
+
+        _metrics.RecordDashboardQuery(
+            scope.Timeframe,
+            hybridRequested,
+            hybridEnabled,
+            timer.Elapsed.TotalMilliseconds,
+            rawRowsScanned,
+            rollupRows.Count,
+            failureRollupRows.Count);
 
         return new ReportDashboardResponse
         {

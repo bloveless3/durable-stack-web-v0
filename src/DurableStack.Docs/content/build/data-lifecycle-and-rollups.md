@@ -73,6 +73,20 @@ Why this is preferred:
 - Gives operational proof that DurableStack handles real platform workflows.
 - Keeps worker operations observable through the same telemetry model.
 
+## Current implementation status (Web v0)
+
+Current code in this solution uses a temporary scheduler abstraction while DurableStack package integration is pending:
+
+- `ExecutionMode=local`:
+  - lifecycle dispatch runs in-process through `LocalTelemetryLifecycleScheduler`
+  - rollup/retention logic runs via `ITelemetryRollupJob` and `ITelemetryRetentionJob`
+  - intended for single-instance API execution
+- `ExecutionMode=durablestack`:
+  - reserved integration mode for future DurableStack package wiring
+  - when selected today without integration wiring, lifecycle jobs are intentionally not dispatched
+
+This preserves a stable interface for future package adoption without duplicating job logic.
+
 ## Failure grouping strategy
 
 For dashboard failure panels, group by:
@@ -122,8 +136,7 @@ Implementation guardrails:
 
 ## Pre-launch checklist
 
-1. Implement retention worker with dry-run + metrics mode.
-2. Add dashboard query telemetry (latency, scanned rows, cache hit).
-3. Add load tests for `last_24h`, `last_7d`, `last_30d` at projected tenant counts.
-4. Validate tier migration behavior (free -> paid, paid -> free).
-5. Publish retention terms in product docs and pricing pages.
+1. Wire `ExecutionMode=durablestack` to DurableStack package-based recurring jobs.
+2. Add load tests for `last_24h`, `last_7d`, `last_30d` at projected tenant counts.
+3. Validate tier migration behavior (free -> paid, paid -> free).
+4. Publish retention terms in product docs and pricing pages.

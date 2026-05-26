@@ -21,15 +21,18 @@ public sealed class TelemetryRollupJob : ITelemetryRollupJob
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IOptionsMonitor<TelemetryLifecycleOptions> _options;
     private readonly ILogger<TelemetryRollupJob> _logger;
+    private readonly TelemetryLifecycleMetrics _metrics;
 
     public TelemetryRollupJob(
         IServiceScopeFactory scopeFactory,
         IOptionsMonitor<TelemetryLifecycleOptions> options,
-        ILogger<TelemetryRollupJob> logger)
+        ILogger<TelemetryRollupJob> logger,
+        TelemetryLifecycleMetrics metrics)
     {
         _scopeFactory = scopeFactory;
         _options = options;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task RunOnceAsync(CancellationToken cancellationToken = default)
@@ -100,6 +103,31 @@ public sealed class TelemetryRollupJob : ITelemetryRollupJob
         if (rolledUpBuckets > 0)
         {
             _logger.LogInformation("Telemetry rollup worker upserted {BucketCount} bucket rollups.", rolledUpBuckets);
+        }
+
+        _metrics.RecordRollupBucketsUpserted(rolledUpBuckets);
+
+        foreach (var bucketSize in bucketSizes)
+        {
+            if (!TelemetryLifecycleTime.TryGetBucketInterval(bucketSize, out var interval))
+            {
+                continue;
+            }
+
+            var watermarkUtc = await telemetryDb.TelemetryRollupWatermarks
+                .AsNoTracking()
+                .Where(x => x.BucketSize == bucketSize)
+                .OrderByDescending(x => x.LastRolledUpBucketStartUtc)
+                .Select(x => (DateTimeOffset?)x.LastRolledUpBucketStartUtc)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!watermarkUtc.HasValue)
+            {
+                continue;
+            }
+
+            var lagMinutes = Math.Max(0d, (now - watermarkUtc.Value.Add(interval)).TotalMinutes);
+            _metrics.RecordRollupWatermarkLag(bucketSize, lagMinutes);
         }
     }
 

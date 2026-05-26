@@ -194,6 +194,73 @@ public sealed class ReportDashboardAuthorizationTests
         Assert.Equal(6, mergedFailure.FailureCount);
     }
 
+    [Fact]
+    public async Task ReportDashboardQuery_WithHybridEnabledAndNoRollups_FallsBackToFullRawWindow()
+    {
+        using var factory = new DurableStackApiFactory(enableHybridRollupReads: true);
+        var user = await factory.SeedUserScopeAsync();
+        await factory.SeedHybridFallbackRawOnlyTelemetryAsync(user.AllowedTenantPublicId);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
+
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest
+        {
+            TenantIds = [user.AllowedTenantId],
+            Timeframe = "last_24h"
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<ReportDashboardResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.Equal(2, body.Summary.RunStarted);
+        Assert.Equal(2, body.Summary.RunSucceeded);
+        Assert.Equal(0, body.Summary.RunFailed);
+        Assert.Equal(30, body.Summary.HeartbeatCount);
+        Assert.Equal(2, body.Series.Sum(x => x.RunStarted));
+        Assert.Equal(2, body.Series.Sum(x => x.RunSucceeded));
+        Assert.Equal(30, body.Series.Sum(x => x.HeartbeatCount));
+    }
+
+    [Fact]
+    public async Task ReportDashboardQuery_WithHybridEnabled_DoesNotDoubleCountBoundaryBucket()
+    {
+        using var factory = new DurableStackApiFactory(enableHybridRollupReads: true);
+        var user = await factory.SeedUserScopeAsync();
+        await factory.SeedHybridBoundaryTelemetryAsync(user.AllowedTenantPublicId);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
+
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest
+        {
+            TenantIds = [user.AllowedTenantId],
+            Timeframe = "last_24h"
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<ReportDashboardResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.Equal(5, body.Summary.RunStarted);
+        Assert.Equal(5, body.Summary.RunSucceeded);
+        Assert.Equal(50, body.Summary.HeartbeatCount);
+        Assert.Equal(5, body.Series.Sum(x => x.RunStarted));
+        Assert.Equal(5, body.Series.Sum(x => x.RunSucceeded));
+        Assert.Equal(50, body.Series.Sum(x => x.HeartbeatCount));
+    }
+
     private sealed class DurableStackApiFactory : WebApplicationFactory<Program>
     {
         private readonly string _controlPlaneDbName = $"control-{Guid.NewGuid():N}";
@@ -452,6 +519,66 @@ public sealed class ReportDashboardAuthorizationTests
             await db.SaveChangesAsync();
         }
 
+        public async Task SeedHybridFallbackRawOnlyTelemetryAsync(string tenantPublicId)
+        {
+            using var scope = Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TelemetryDbContext>();
+
+            var nowUtc = DateTimeOffset.UtcNow;
+
+            db.TelemetryBatches.Add(CreateBatch(
+                tenantPublicId,
+                nowUtc,
+                "worker-raw-only",
+                "raw-job",
+                nowUtc.AddHours(-3),
+                heartbeatCount: 21));
+
+            db.TelemetryBatches.Add(CreateBatch(
+                tenantPublicId,
+                nowUtc,
+                "worker-raw-only",
+                "raw-job",
+                nowUtc.AddMinutes(-15),
+                heartbeatCount: 9));
+
+            await db.SaveChangesAsync();
+        }
+
+        public async Task SeedHybridBoundaryTelemetryAsync(string tenantPublicId)
+        {
+            using var scope = Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TelemetryDbContext>();
+
+            var nowUtc = DateTimeOffset.UtcNow;
+            var boundaryUtc = AlignToBucket(nowUtc.AddHours(-1), TimeSpan.FromMinutes(15));
+
+            db.TelemetryBucketRollups.Add(new TelemetryBucketRollup
+            {
+                Id = Guid.NewGuid(),
+                TenantPublicId = tenantPublicId,
+                BucketSize = "15m",
+                BucketStartUtc = boundaryUtc.AddMinutes(-15),
+                RunStarted = 4,
+                RunSucceeded = 4,
+                RunFailed = 0,
+                RunRetried = 0,
+                HeartbeatCount = 40,
+                LastEventAtUtc = boundaryUtc.AddMinutes(-1),
+                ComputedAtUtc = nowUtc
+            });
+
+            db.TelemetryBatches.Add(CreateBatch(
+                tenantPublicId,
+                nowUtc,
+                "worker-boundary",
+                "boundary-job",
+                boundaryUtc,
+                heartbeatCount: 10));
+
+            await db.SaveChangesAsync();
+        }
+
         public string CreateUserToken(Guid userId, string scope)
         {
             var claims = new List<Claim>
@@ -480,6 +607,61 @@ public sealed class ReportDashboardAuthorizationTests
             var bucketTicks = bucketInterval.Ticks;
             var alignedTicks = ticks - (ticks % bucketTicks);
             return new DateTimeOffset(alignedTicks, TimeSpan.Zero);
+        }
+
+        private static TelemetryBatch CreateBatch(
+            string tenantPublicId,
+            DateTimeOffset receivedAtUtc,
+            string workerName,
+            string jobName,
+            DateTimeOffset occurredAtUtc,
+            int heartbeatCount)
+        {
+            var batch = new TelemetryBatch
+            {
+                Id = Guid.NewGuid(),
+                TenantPublicId = tenantPublicId,
+                ReceivedAtUtc = receivedAtUtc,
+                AcceptedCount = 3,
+                RejectedCount = 0
+            };
+
+            batch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch.Id,
+                EventType = "job_started",
+                EventVersion = 2,
+                OccurredAtUtc = occurredAtUtc,
+                WorkerName = workerName,
+                JobName = jobName
+            });
+
+            batch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch.Id,
+                EventType = "job_succeeded",
+                EventVersion = 2,
+                OccurredAtUtc = occurredAtUtc,
+                WorkerName = workerName,
+                JobName = jobName,
+                DurationMs = 12.0
+            });
+
+            batch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch.Id,
+                EventType = "worker_heartbeat_batch",
+                EventVersion = 2,
+                OccurredAtUtc = occurredAtUtc,
+                WorkerName = workerName,
+                HeartbeatCount = heartbeatCount,
+                PayloadJson = $"{{\"heartbeatCount\":{heartbeatCount}}}"
+            });
+
+            return batch;
         }
     }
 

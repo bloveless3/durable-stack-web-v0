@@ -33,11 +33,21 @@ Initial solution scaffolding for hosted DurableStack platform services.
   - authenticated telemetry ingestion (`POST /v1/events/batch`)
   - idempotency key support on ingestion
   - tenant policy enforcement at ingestion (batch limits, sync enabled/disabled, error detail redaction)
-  - initial reporting summary endpoint for app integration (`GET /v1/reports/summary`)
+  - dashboard query endpoint for app integration (`POST /v1/reports/dashboard/query`)
+  - grouped failure aggregation (`failureGroups`) for repeated error visibility
+  - hybrid dashboard query mode (raw recent + rollups historical) behind feature flag
 - EF Core initial migrations generated for both DbContexts:
   - `src/DurableStack.ControlPlane/Migrations/ControlPlane`
   - `src/DurableStack.Telemetry/Migrations/Telemetry`
-- App foundation includes typed API client and a basic dashboard check wired to API summary.
+- App foundation includes typed API client and a dashboard BFF endpoint (`GET /api/reports/dashboard`).
+- Telemetry lifecycle persistence now includes rollup and watermark tables:
+  - `telemetry_bucket_rollups`
+  - `telemetry_failure_group_rollups`
+  - `telemetry_rollup_watermarks`
+- Lifecycle execution currently runs through a local scheduler abstraction:
+  - `ExecutionMode=local` in `TelemetryLifecycle`
+  - local single-instance host service dispatches rollup and retention jobs
+  - `ExecutionMode=durablestack` is reserved for future package-based integration
 - App shell now includes a static header, workspace sidebar, and Ctrl+K command palette UX baseline.
 - Styling now uses real Tailwind CSS with SCSS entry source (`src/DurableStack.App/wwwroot/scss/app.scss`) and compiled output (`src/DurableStack.App/wwwroot/scss/app.css`).
 - App auth foundation now includes ASP.NET Core Identity + cookie auth with an email-first flow (`/auth` -> `/auth/sign-in` or `/register`).
@@ -56,6 +66,13 @@ Initial solution scaffolding for hosted DurableStack platform services.
 - App includes a reusable `ICurrentUserContext` service for accessing the authenticated user from application code.
 - Marketing/docs search should reuse the command-palette interaction pattern with a docs index backend when `durablestack.com` is built.
 - Planned next UX track: wire live external providers and email sign-in link, then add onboarding flow.
+
+## Lifecycle execution notes
+
+- Current implementation: local process scheduler abstraction with explicit execution mode configuration.
+- This is intentionally a temporary integration point until DurableStack is consumed as a package.
+- In `local` mode, lifecycle jobs are not safe for multi-replica API deployments.
+- Future target: switch to DurableStack-backed recurring jobs (`telemetry-rollup-worker`, `telemetry-retention-worker`) without changing job logic.
 
 ## Notes
 
