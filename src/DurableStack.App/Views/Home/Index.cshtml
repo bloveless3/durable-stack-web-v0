@@ -9,11 +9,9 @@
 }
 
 @section PageControls {
-    <span class="app-tooltip app-tooltip-left" data-dashboard-refresh-tooltip data-tip="Last load --">
-        <button type="button" class="app-page-control-button app-page-control-button-icon" data-dashboard-refresh aria-label="Refresh dashboard data">
-            <i class="fa-solid fa-rotate-right app-page-control-icon-refresh" aria-hidden="true"></i>
-        </button>
-    </span>
+    <button type="button" class="app-page-control-button app-page-control-button-icon" data-dashboard-refresh aria-label="Refresh dashboard data" title="Last load --">
+        <i class="fa-solid fa-rotate-right app-page-control-icon-refresh" aria-hidden="true"></i>
+    </button>
 }
 
 <section class="metrics-grid" aria-label="Dashboard KPI metrics">
@@ -84,6 +82,7 @@
         <table class="dashboard-failure-table">
             <thead>
                 <tr>
+                    <th>Details</th>
                     <th>Count</th>
                     <th>Tenant</th>
                     <th>Job</th>
@@ -94,12 +93,26 @@
             </thead>
             <tbody data-failures-table-body>
                 <tr>
-                    <td colspan="6" class="dashboard-empty-row">Waiting for telemetry.</td>
+                    <td colspan="7" class="dashboard-empty-row">Waiting for telemetry.</td>
                 </tr>
             </tbody>
         </table>
     </div>
 </section>
+
+<div class="failure-modal-backdrop" data-failure-modal-backdrop hidden></div>
+<div class="failure-modal" data-failure-modal hidden role="dialog" aria-modal="true" aria-labelledby="failure-modal-title">
+    <div class="failure-modal-card">
+        <header class="failure-modal-header">
+            <h3 id="failure-modal-title">Failure Details</h3>
+            <button type="button" class="failure-modal-close" data-failure-modal-close aria-label="Close failure details">&times;</button>
+        </header>
+        <div class="failure-modal-meta" data-failure-modal-meta>--</div>
+        <div class="failure-modal-content" data-failure-modal-content>
+            <p class="dashboard-empty-row">Select a failure row to load details.</p>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://www.gstatic.com/charts/loader.js"></script>

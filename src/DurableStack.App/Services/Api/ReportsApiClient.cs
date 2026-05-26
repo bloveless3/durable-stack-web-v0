@@ -9,6 +9,8 @@ namespace DurableStack.App.Services.Api;
 public interface IReportsApiClient
 {
     Task<ReportDashboardResponse?> GetDashboardAsync(ReportDashboardQueryRequest request, string bearerToken, string? correlationId, CancellationToken cancellationToken = default);
+
+    Task<ReportDashboardFailureDetailsResponse?> GetFailureDetailsAsync(ReportDashboardFailureDetailsQueryRequest request, string bearerToken, string? correlationId, CancellationToken cancellationToken = default);
 }
 
 public sealed class ReportsApiClient : IReportsApiClient
@@ -53,5 +55,32 @@ public sealed class ReportsApiClient : IReportsApiClient
         }
 
         return await response.Content.ReadFromJsonAsync<ReportDashboardResponse>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<ReportDashboardFailureDetailsResponse?> GetFailureDetailsAsync(
+        ReportDashboardFailureDetailsQueryRequest request,
+        string bearerToken,
+        string? correlationId,
+        CancellationToken cancellationToken = default)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/v1/reports/dashboard/failure-details")
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+
+        if (!string.IsNullOrWhiteSpace(correlationId))
+        {
+            httpRequest.Headers.Add("X-Correlation-Id", correlationId);
+        }
+
+        using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<ReportDashboardFailureDetailsResponse>(cancellationToken: cancellationToken);
     }
 }

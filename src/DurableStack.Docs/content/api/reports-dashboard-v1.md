@@ -90,6 +90,14 @@ Grouped failures table:
 - `errorMessage`
 - `lastOccurredAtUtc`
 
+When detailed error sync is disabled for a tenant, grouped failures will display this note:
+
+- `Detailed error message collection is disabled for this tenant.`
+
+In that mode, message values may show as `N/A` while error type and counts remain available.
+
+To enable message-level details, set `DetailedErrorSyncEnabled = true` for the tenant in the control-plane data.
+
 Grouping key:
 
 - tenant + job + error type + error message
@@ -104,7 +112,7 @@ Grouping key:
 - `runsTotal`: `runSucceeded + runFailed`
 - `successRate`: `runSucceeded / max(runsTotal, 1)`
 - `failureRate`: `runFailed / max(runsTotal, 1)`
-- `retryRate`: `runRetried / max(runStarted, 1)`
+- `retryRate`: `runRetried / max(runStarted, 1)` (used for backend summary calculations)
 - `p95DurationMs`: percentile 95 over terminal event `durationMs` (`job_succeeded`, `job_failed`)
 
 ## Data quality and null handling

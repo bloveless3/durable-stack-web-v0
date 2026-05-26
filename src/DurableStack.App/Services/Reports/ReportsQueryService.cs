@@ -8,6 +8,8 @@ namespace DurableStack.App.Services.Reports;
 public interface IReportsQueryService
 {
     Task<DashboardDataResponse?> QueryDashboardAsync(string? correlationId, CancellationToken cancellationToken = default);
+
+    Task<DashboardFailureDetailsResponse?> QueryFailureDetailsAsync(string? correlationId, string jobName, string errorType, string errorMessage, CancellationToken cancellationToken = default);
 }
 
 public sealed class ReportsQueryService : IReportsQueryService
@@ -121,6 +123,56 @@ public sealed class ReportsQueryService : IReportsQueryService
                     WorkerName = string.IsNullOrWhiteSpace(x.WorkerName) ? "(unknown)" : x.WorkerName,
                     Attempt = x.Attempt?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
                     DurationMs = FormatNumberOrFallback(x.DurationMs)
+                })
+                .ToList()
+        };
+    }
+
+    public async Task<DashboardFailureDetailsResponse?> QueryFailureDetailsAsync(
+        string? correlationId,
+        string jobName,
+        string errorType,
+        string errorMessage,
+        CancellationToken cancellationToken = default)
+    {
+        var preferenceValues = await _userPreferenceService.GetValuesAsync(PreferenceKeys.GlobalFilterKeys, cancellationToken);
+
+        var query = new ReportDashboardFailureDetailsQueryRequest
+        {
+            Timeframe = MapTimeRangeToApiTimeframe(preferenceValues),
+            TenantIds = ParseGuidList(preferenceValues, PreferenceKeys.GlobalFilterTenant, "all-tenants"),
+            ProjectIds = ParseGuidList(preferenceValues, PreferenceKeys.GlobalFilterProject, "all-projects"),
+            OrganizationIds = ParseGuidList(preferenceValues, PreferenceKeys.GlobalFilterOrganization, "all-organizations"),
+            JobName = string.IsNullOrWhiteSpace(jobName) ? "(unknown)" : jobName.Trim(),
+            ErrorType = string.IsNullOrWhiteSpace(errorType) ? "(unknown)" : errorType.Trim(),
+            ErrorMessage = string.IsNullOrWhiteSpace(errorMessage) ? "(unknown)" : errorMessage.Trim()
+        };
+
+        var token = await _userApiTokenService.CreateReportsReadTokenAsync(cancellationToken);
+        var details = await _reportsApiClient.GetFailureDetailsAsync(query, token, correlationId, cancellationToken);
+
+        if (details is null)
+        {
+            return null;
+        }
+
+        return new DashboardFailureDetailsResponse
+        {
+            Timeframe = details.Timeframe,
+            JobName = string.IsNullOrWhiteSpace(details.JobName) ? "(unknown)" : details.JobName,
+            ErrorType = string.IsNullOrWhiteSpace(details.ErrorType) ? "N/A" : details.ErrorType,
+            ErrorMessage = string.IsNullOrWhiteSpace(details.ErrorMessage) ? "N/A" : details.ErrorMessage,
+            SampleCount = details.SampleCount,
+            Samples = details.Samples
+                .Select(x => new DashboardFailureSampleData
+                {
+                    TenantDisplayName = string.IsNullOrWhiteSpace(x.TenantDisplayName) ? "N/A" : x.TenantDisplayName,
+                    OccurredAtUtc = FormatUtc(x.OccurredAtUtc),
+                    WorkerName = string.IsNullOrWhiteSpace(x.WorkerName) ? "(unknown)" : x.WorkerName,
+                    Attempt = x.Attempt?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
+                    RunId = x.RunId?.ToString("D") ?? "N/A",
+                    ErrorDetail = string.IsNullOrWhiteSpace(x.ErrorDetail) ? "N/A" : x.ErrorDetail,
+                    PayloadJson = string.IsNullOrWhiteSpace(x.PayloadJson) ? "N/A" : x.PayloadJson
                 })
                 .ToList()
         };

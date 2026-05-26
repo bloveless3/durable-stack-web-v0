@@ -130,3 +130,35 @@ public sealed class DashboardFailureGroupData
 
     public string DurationMs { get; set; } = "N/A";
 }
+
+public sealed class DashboardFailureDetailsResponse
+{
+    public string Timeframe { get; set; } = "last_24h";
+
+    public string JobName { get; set; } = "(unknown)";
+
+    public string ErrorType { get; set; } = "N/A";
+
+    public string ErrorMessage { get; set; } = "N/A";
+
+    public int SampleCount { get; set; }
+
+    public List<DashboardFailureSampleData> Samples { get; set; } = [];
+}
+
+public sealed class DashboardFailureSampleData
+{
+    public string TenantDisplayName { get; set; } = "N/A";
+
+    public string OccurredAtUtc { get; set; } = "N/A";
+
+    public string WorkerName { get; set; } = "(unknown)";
+
+    public string Attempt { get; set; } = "N/A";
+
+    public string RunId { get; set; } = "N/A";
+
+    public string ErrorDetail { get; set; } = "N/A";
+
+    public string PayloadJson { get; set; } = "N/A";
+}

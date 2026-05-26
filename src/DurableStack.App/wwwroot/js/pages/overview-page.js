@@ -1,6 +1,5 @@
 (function () {
   const refreshTrigger = document.querySelector("[data-dashboard-refresh]");
-  const refreshTooltip = document.querySelector("[data-dashboard-refresh-tooltip]");
   const runsTotalEl = document.querySelector("[data-kpi-runs-total]");
   const successRateEl = document.querySelector("[data-kpi-success-rate]");
   const failureRateEl = document.querySelector("[data-kpi-failure-rate]");
@@ -15,6 +14,11 @@
   const workerOfflineCountEl = document.querySelector("[data-worker-offline-count]");
   const workerListEl = document.querySelector("[data-worker-list]");
   const failuresBodyEl = document.querySelector("[data-failures-table-body]");
+  const failureModalEl = document.querySelector("[data-failure-modal]");
+  const failureModalBackdropEl = document.querySelector("[data-failure-modal-backdrop]");
+  const failureModalMetaEl = document.querySelector("[data-failure-modal-meta]");
+  const failureModalContentEl = document.querySelector("[data-failure-modal-content]");
+  const failureModalCloseEl = document.querySelector("[data-failure-modal-close]");
 
   const pollIntervalMs = 15000;
   const staleAfterMs = 45000;
@@ -31,6 +35,102 @@
   let staleNotified = false;
   const expandedWorkers = new Set();
 
+  function encodeQueryParam(value) {
+    return encodeURIComponent(toText(value, ""));
+  }
+
+  function hideFailureModal() {
+    if (failureModalEl) {
+      failureModalEl.hidden = true;
+    }
+    if (failureModalBackdropEl) {
+      failureModalBackdropEl.hidden = true;
+    }
+  }
+
+  function showFailureModal() {
+    if (failureModalEl) {
+      failureModalEl.hidden = false;
+    }
+    if (failureModalBackdropEl) {
+      failureModalBackdropEl.hidden = false;
+    }
+  }
+
+  function parseErrorDetail(payloadJson) {
+    if (!payloadJson || payloadJson === "N/A") {
+      return "N/A";
+    }
+
+    try {
+      const parsed = JSON.parse(payloadJson);
+      if (parsed && typeof parsed.errorDetail === "string" && parsed.errorDetail.trim().length > 0) {
+        return parsed.errorDetail;
+      }
+    } catch {
+      return "N/A";
+    }
+
+    return "N/A";
+  }
+
+  function renderFailureDetailSamples(details) {
+    if (!failureModalContentEl) {
+      return;
+    }
+
+    const samples = Array.isArray(details.samples) ? details.samples : [];
+    if (samples.length === 0) {
+      failureModalContentEl.innerHTML = '<p class="dashboard-empty-row">No matching failure samples found in this window.</p>';
+      return;
+    }
+
+    failureModalContentEl.innerHTML = samples.map(function (sample) {
+      const stackTrace = sample.errorDetail && sample.errorDetail !== "N/A"
+        ? sample.errorDetail
+        : parseErrorDetail(sample.payloadJson);
+
+      return `
+        <article class="failure-sample-card">
+          <div class="failure-sample-head">
+            <span><strong>Tenant:</strong> ${escapeHtml(toText(sample.tenantDisplayName, "N/A"))}</span>
+            <span><strong>Time:</strong> ${escapeHtml(toText(sample.occurredAtUtc, "N/A"))}</span>
+            <span><strong>Worker:</strong> ${escapeHtml(toText(sample.workerName, "(unknown)"))}</span>
+            <span><strong>Attempt:</strong> ${escapeHtml(toText(sample.attempt, "N/A"))}</span>
+            <span><strong>Run:</strong> ${escapeHtml(toText(sample.runId, "N/A"))}</span>
+          </div>
+          <div class="failure-sample-label">Stack Trace / Error Detail</div>
+          <pre class="failure-sample-pre">${escapeHtml(toText(stackTrace, "N/A"))}</pre>
+        </article>
+      `;
+    }).join("");
+  }
+
+  async function openFailureModal(jobName, errorType, errorMessage) {
+    if (!window.durableStackApi || !failureModalContentEl || !failureModalMetaEl) {
+      return;
+    }
+
+    showFailureModal();
+    failureModalMetaEl.textContent = `${toText(jobName, "(unknown)")} | ${toText(errorType, "N/A")}`;
+    failureModalContentEl.innerHTML = '<p class="dashboard-empty-row">Loading failure details...</p>';
+
+    try {
+      const url = `/api/reports/dashboard/failure-details?jobName=${encodeQueryParam(jobName)}&errorType=${encodeQueryParam(errorType)}&errorMessage=${encodeQueryParam(errorMessage)}`;
+      const response = await window.durableStackApi.request(url, {
+        method: "GET",
+        retries: 1,
+        retryDelayMs: 300
+      });
+
+      const details = response.data || {};
+      failureModalMetaEl.textContent = `${toText(details.jobName, "(unknown)")} | ${toText(details.errorType, "N/A")} | ${toNumberText(details.sampleCount)} sample(s)`;
+      renderFailureDetailSamples(details);
+    } catch {
+      failureModalContentEl.innerHTML = '<p class="dashboard-empty-row">Unable to load failure details right now.</p>';
+    }
+  }
+
   function formatLastLoadLabel(dateValue) {
     const hours24 = dateValue.getHours();
     const minutes = dateValue.getMinutes().toString().padStart(2, "0");
@@ -40,11 +140,11 @@
   }
 
   function setLastLoaded() {
-    if (!refreshTooltip) {
+    if (!refreshTrigger) {
       return;
     }
 
-    refreshTooltip.setAttribute("data-tip", formatLastLoadLabel(new Date()));
+    refreshTrigger.setAttribute("title", formatLastLoadLabel(new Date()));
   }
 
   function toNumberText(value) {
@@ -68,6 +168,16 @@
     }[timeframe] || "Selected range";
 
     return `${base} (${bucketSize || "--"} buckets)`;
+  }
+
+  function formatTooltipTimestamp(dateValue) {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    }).format(dateValue);
   }
 
   function statusClass(status) {
@@ -176,19 +286,39 @@
     }
 
     const rows = Array.isArray(failureGroups) ? failureGroups : [];
+
     if (rows.length === 0) {
-      failuresBodyEl.innerHTML = '<tr><td colspan="6" class="dashboard-empty-row">No failures in this window.</td></tr>';
+      failuresBodyEl.innerHTML = '<tr><td colspan="7" class="dashboard-empty-row">No failures in this window.</td></tr>';
       return;
     }
 
     failuresBodyEl.innerHTML = rows.map(function (item) {
       return `
         <tr>
+          <td>
+            <button
+              type="button"
+              class="app-page-control-button failure-row-action"
+              data-failure-detail-button
+              data-job-name="${escapeHtml(toText(item.jobName, "(unknown)"))}"
+              data-error-type="${escapeHtml(toText(item.errorType, "N/A"))}"
+              data-error-message="${escapeHtml(toText(item.errorMessage, "N/A"))}">
+              <i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i>
+              <span>Details</span>
+            </button>
+          </td>
           <td>${escapeHtml(toText(item.failureCount, 0))}</td>
-          <td>${escapeHtml(toText(item.tenantDisplayName, "N/A"))}</td>
+          <td>
+            <span>${escapeHtml(toText(item.tenantDisplayName, "N/A"))}</span>
+            <span class="failure-message-info" title="Detailed error message collection is disabled for this tenant.">
+              <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+            </span>
+          </td>
           <td>${escapeHtml(toText(item.jobName, "(unknown)"))}</td>
           <td>${escapeHtml(toText(item.errorType, "N/A"))}</td>
-          <td title="${escapeHtml(toText(item.errorMessage, "N/A"))}">${escapeHtml(toText(item.errorMessage, "N/A"))}</td>
+          <td>
+            <div title="${escapeHtml(toText(item.errorMessage, "N/A"))}">${escapeHtml(toText(item.errorMessage, "N/A"))}</div>
+          </td>
           <td>${escapeHtml(toText(item.lastOccurredAtUtc, "N/A"))}</td>
         </tr>
       `;
@@ -223,14 +353,27 @@
 
     const dataTable = new window.google.visualization.DataTable();
     dataTable.addColumn("datetime", "Time");
+    dataTable.addColumn({ type: "string", role: "tooltip" });
     dataTable.addColumn("number", "Succeeded");
     dataTable.addColumn("number", "Failed");
     dataTable.addColumn("number", "Retried");
     dataTable.addColumn("number", "Heartbeats");
 
     points.forEach(function (point) {
+      const pointDate = new Date(point.bucketStartUtc);
+      const tooltipLabel = formatTooltipTimestamp(pointDate);
+      const tooltipText = [
+        tooltipLabel,
+        "",
+        `Succeeded: ${point.runSucceeded || 0}`,
+        `Failed: ${point.runFailed || 0}`,
+        `Retried: ${point.runRetried || 0}`,
+        `Heartbeats: ${point.heartbeatCount || 0}`
+      ].join("\n");
+
       dataTable.addRow([
-        new Date(point.bucketStartUtc),
+        pointDate,
+        tooltipText,
         point.runSucceeded || 0,
         point.runFailed || 0,
         point.runRetried || 0,
@@ -269,7 +412,7 @@
         0: { color: "#16a34a", lineWidth: 2 },
         1: { color: "#dc2626", lineWidth: 2 },
         2: { color: "#d97706", lineWidth: 2 },
-        3: { color: "#7c3aed", lineWidth: 2, targetAxisIndex: 1 }
+        3: { color: "#7c3aed", lineWidth: 2, lineDashStyle: [6, 4], targetAxisIndex: 1 }
       },
       vAxes: {
         0: {
@@ -287,6 +430,7 @@
       },
       pointSize: 0,
       lineWidth: 2,
+      focusTarget: "category",
       enableInteractivity: true,
       tooltip: { trigger: "focus" },
       crosshair: {
@@ -509,6 +653,40 @@
       }
     });
   }
+
+  if (failuresBodyEl) {
+    failuresBodyEl.addEventListener("click", function (event) {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const button = target.closest("[data-failure-detail-button]");
+      if (!button) {
+        return;
+      }
+
+      openFailureModal(
+        button.getAttribute("data-job-name"),
+        button.getAttribute("data-error-type"),
+        button.getAttribute("data-error-message")
+      );
+    });
+  }
+
+  if (failureModalCloseEl) {
+    failureModalCloseEl.addEventListener("click", hideFailureModal);
+  }
+
+  if (failureModalBackdropEl) {
+    failureModalBackdropEl.addEventListener("click", hideFailureModal);
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && failureModalEl && !failureModalEl.hidden) {
+      hideFailureModal();
+    }
+  });
 
   fetchDashboard(false);
   scheduleStaleCheck();

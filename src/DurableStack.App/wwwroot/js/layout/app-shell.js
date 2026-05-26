@@ -47,6 +47,24 @@
     compactToggleIcon.classList.add(isCompact ? "fa-expand" : "fa-compress");
   }
 
+  function updateTopLevelNavTooltips(isCompact) {
+    const topLevelLinks = Array.from(document.querySelectorAll(".sidebar-nav-group > .sidebar-link, .sidebar-nav-group > .sidebar-link-toggle"));
+
+    topLevelLinks.forEach(function (link) {
+      const labelText = (link.querySelector(".sidebar-link-text")?.textContent || link.getAttribute("data-menu-title") || "").trim();
+      if (!labelText) {
+        link.removeAttribute("title");
+        return;
+      }
+
+      if (isCompact && desktopMediaQuery.matches) {
+        link.setAttribute("title", labelText);
+      } else {
+        link.removeAttribute("title");
+      }
+    });
+  }
+
   function getCompactPreference() {
     if (!window.durableStackPreferenceKeys) {
       return false;
@@ -213,6 +231,7 @@
     }
 
     updateCompactToggleUi(shouldCompact);
+    updateTopLevelNavTooltips(shouldCompact);
 
     if (!shouldCompact) {
       hideFlyout();

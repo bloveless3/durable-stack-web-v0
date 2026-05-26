@@ -264,6 +264,78 @@ public sealed class ReportDashboardAuthorizationTests
         Assert.Equal(50, body.Series.Sum(x => x.HeartbeatCount));
     }
 
+    [Fact]
+    public async Task ReportDashboardQuery_P95UsesLatestTerminalAttemptPerRun()
+    {
+        using var factory = new DurableStackApiFactory();
+        var user = await factory.SeedUserScopeAsync();
+        await factory.SeedP95RetryWindowTelemetryAsync(user.AllowedTenantPublicId);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
+
+        var oneHourResponse = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest
+        {
+            TenantIds = [user.AllowedTenantId],
+            Timeframe = "last_hour"
+        });
+        var oneHourBody = await oneHourResponse.Content.ReadFromJsonAsync<ReportDashboardResponse>();
+
+        var dayResponse = await client.PostAsJsonAsync("/v1/reports/dashboard/query", new ReportDashboardQueryRequest
+        {
+            TenantIds = [user.AllowedTenantId],
+            Timeframe = "last_24h"
+        });
+        var dayBody = await dayResponse.Content.ReadFromJsonAsync<ReportDashboardResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, oneHourResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, dayResponse.StatusCode);
+        Assert.NotNull(oneHourBody);
+        Assert.NotNull(dayBody);
+        Assert.Equal(20.0, oneHourBody.Summary.P95DurationMs);
+        Assert.Equal(80.0, dayBody.Summary.P95DurationMs);
+    }
+
+    [Fact]
+    public async Task ReportDashboardFailureDetails_WithAuthorizedScope_ReturnsSampleStackTraces()
+    {
+        using var factory = new DurableStackApiFactory();
+        var user = await factory.SeedUserScopeAsync();
+        await factory.SeedFailureDetailsTelemetryAsync(user.AllowedTenantPublicId);
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost")
+        });
+
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", factory.CreateUserToken(user.UserId, "reports.read"));
+
+        var response = await client.PostAsJsonAsync("/v1/reports/dashboard/failure-details", new ReportDashboardFailureDetailsQueryRequest
+        {
+            TenantIds = [user.AllowedTenantId],
+            Timeframe = "last_hour",
+            JobName = "retry-demo",
+            ErrorType = "InvalidOperationException",
+            ErrorMessage = "Retryable failure"
+        });
+
+        var body = await response.Content.ReadFromJsonAsync<ReportDashboardFailureDetailsResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(body);
+        Assert.Equal(2, body.SampleCount);
+        Assert.Equal("retry-demo", body.JobName);
+        Assert.Equal("InvalidOperationException", body.ErrorType);
+        Assert.Equal("Retryable failure", body.ErrorMessage);
+        Assert.Contains(body.Samples, x => !string.IsNullOrWhiteSpace(x.ErrorDetail));
+    }
+
     private sealed class DurableStackApiFactory : WebApplicationFactory<Program>
     {
         private readonly string _controlPlaneDbName = $"control-{Guid.NewGuid():N}";
@@ -579,6 +651,131 @@ public sealed class ReportDashboardAuthorizationTests
                 boundaryUtc,
                 heartbeatCount: 10));
 
+            await db.SaveChangesAsync();
+        }
+
+        public async Task SeedFailureDetailsTelemetryAsync(string tenantPublicId)
+        {
+            using var scope = Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TelemetryDbContext>();
+
+            var nowUtc = DateTimeOffset.UtcNow;
+
+            var batch = new TelemetryBatch
+            {
+                Id = Guid.NewGuid(),
+                TenantPublicId = tenantPublicId,
+                ReceivedAtUtc = nowUtc,
+                AcceptedCount = 2,
+                RejectedCount = 0
+            };
+
+            batch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch.Id,
+                EventType = "job_failed",
+                EventVersion = 2,
+                OccurredAtUtc = nowUtc.AddMinutes(-8),
+                JobName = "retry-demo",
+                WorkerName = "worker-retry",
+                Attempt = 1,
+                RunId = Guid.NewGuid(),
+                ErrorType = "InvalidOperationException",
+                ErrorMessage = "Retryable failure",
+                PayloadJson = "{\"errorDetail\":\"System.InvalidOperationException: Retryable failure\\n   at Demo.Job.ExecuteAsync()\"}"
+            });
+
+            batch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch.Id,
+                EventType = "job_failed",
+                EventVersion = 2,
+                OccurredAtUtc = nowUtc.AddMinutes(-4),
+                JobName = "retry-demo",
+                WorkerName = "worker-retry",
+                Attempt = 2,
+                RunId = Guid.NewGuid(),
+                ErrorType = "InvalidOperationException",
+                ErrorMessage = "Retryable failure",
+                PayloadJson = "{\"errorDetail\":\"System.InvalidOperationException: Retryable failure second occurrence\\n   at Demo.Job.ExecuteAsync()\"}"
+            });
+
+            db.TelemetryBatches.Add(batch);
+            await db.SaveChangesAsync();
+        }
+
+        public async Task SeedP95RetryWindowTelemetryAsync(string tenantPublicId)
+        {
+            using var scope = Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<TelemetryDbContext>();
+
+            var nowUtc = DateTimeOffset.UtcNow;
+            var retriedRunId = Guid.NewGuid();
+            var historicalRunId = Guid.NewGuid();
+
+            var historicalBatch = new TelemetryBatch
+            {
+                Id = Guid.NewGuid(),
+                TenantPublicId = tenantPublicId,
+                ReceivedAtUtc = nowUtc,
+                AcceptedCount = 1,
+                RejectedCount = 0
+            };
+
+            historicalBatch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = historicalBatch.Id,
+                EventType = "job_failed",
+                EventVersion = 2,
+                OccurredAtUtc = nowUtc.AddHours(-2),
+                JobName = "retry-job",
+                WorkerName = "worker-historical",
+                RunId = retriedRunId,
+                DurationMs = 80.0,
+                ErrorType = "InvalidOperationException",
+                ErrorMessage = "Transient failure"
+            });
+
+            historicalBatch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = historicalBatch.Id,
+                EventType = "job_succeeded",
+                EventVersion = 2,
+                OccurredAtUtc = nowUtc.AddHours(-3),
+                JobName = "historical-job",
+                WorkerName = "worker-historical",
+                RunId = historicalRunId,
+                DurationMs = 80.0
+            });
+
+            var recentBatch = new TelemetryBatch
+            {
+                Id = Guid.NewGuid(),
+                TenantPublicId = tenantPublicId,
+                ReceivedAtUtc = nowUtc,
+                AcceptedCount = 1,
+                RejectedCount = 0
+            };
+
+            recentBatch.Events.Add(new TelemetryEvent
+            {
+                Id = Guid.NewGuid(),
+                BatchId = recentBatch.Id,
+                EventType = "job_succeeded",
+                EventVersion = 2,
+                OccurredAtUtc = nowUtc.AddMinutes(-5),
+                JobName = "retry-job",
+                WorkerName = "worker-recent",
+                RunId = retriedRunId,
+                DurationMs = 20.0
+            });
+
+            db.TelemetryBatches.Add(historicalBatch);
+            db.TelemetryBatches.Add(recentBatch);
             await db.SaveChangesAsync();
         }
 

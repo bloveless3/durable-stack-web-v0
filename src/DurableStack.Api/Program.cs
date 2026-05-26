@@ -37,6 +37,7 @@ builder.Services.AddOptions<TelemetryLifecycleOptions>()
     .ValidateOnStart();
 builder.Services.AddScoped<IUserReportAccessService, UserReportAccessService>();
 builder.Services.AddScoped<IReportDashboardQueryService, ReportDashboardQueryService>();
+builder.Services.AddScoped<IReportDashboardFailureDetailsQueryService, ReportDashboardFailureDetailsQueryService>();
 builder.Services.AddSingleton<TelemetryLifecycleMetrics>();
 builder.Services.AddSingleton<ITelemetryRollupJob, TelemetryRollupJob>();
 builder.Services.AddSingleton<ITelemetryRetentionJob, TelemetryRetentionJob>();
@@ -425,6 +426,98 @@ app.MapPost("/v1/reports/dashboard/query", async (
         scopeTenantIds,
         tenantDisplayByPublicId,
         queryRunAtUtc,
+        cancellationToken);
+
+    return Results.Ok(response);
+}).RequireAuthorization("ReportsRead");
+
+app.MapPost("/v1/reports/dashboard/failure-details", async (
+    HttpContext context,
+    ReportDashboardFailureDetailsQueryRequest? payload,
+    ControlPlaneDbContext controlPlaneDb,
+    IUserReportAccessService accessService,
+    IReportDashboardFailureDetailsQueryService failureDetailsQueryService,
+    CancellationToken cancellationToken) =>
+{
+    var correlationId = ResolveCorrelationId(context);
+
+    if (!UserAccessContext.TryCreate(context.User, out var user) || user is null)
+    {
+        return CreateProblem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Unauthorized",
+            detail: "A valid user access token is required.",
+            type: BuildProblemTypeUrl(docsBaseUrl, "auth-failed"),
+            correlationId: correlationId,
+            code: "invalid_user_token");
+    }
+
+    payload ??= new ReportDashboardFailureDetailsQueryRequest();
+
+    if (string.IsNullOrWhiteSpace(payload.JobName)
+        || string.IsNullOrWhiteSpace(payload.ErrorType)
+        || string.IsNullOrWhiteSpace(payload.ErrorMessage))
+    {
+        return CreateProblem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Invalid failure details query.",
+            detail: "JobName, ErrorType, and ErrorMessage are required.",
+            type: BuildProblemTypeUrl(docsBaseUrl, "validation-failed"),
+            correlationId: correlationId,
+            code: "validation_failed");
+    }
+
+    UserDashboardReportScope scope;
+
+    try
+    {
+        scope = await accessService.BuildDashboardScopeAsync(user, new ReportDashboardQueryRequest
+        {
+            OrganizationIds = payload.OrganizationIds,
+            ProjectIds = payload.ProjectIds,
+            TenantIds = payload.TenantIds,
+            Timeframe = payload.Timeframe
+        }, cancellationToken);
+    }
+    catch (UserReportScopeException ex)
+    {
+        return CreateProblem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Invalid failure details query.",
+            detail: ex.Message,
+            type: BuildProblemTypeUrl(docsBaseUrl, "validation-failed"),
+            correlationId: correlationId,
+            code: ex.Code);
+    }
+
+    var tenantMappings = await controlPlaneDb.Tenants
+        .AsNoTracking()
+        .Where(x => scope.TenantIds.Contains(x.Id))
+        .Select(x => new
+        {
+            x.PublicTenantId,
+            x.EnvironmentName,
+            ProjectName = x.Project != null ? x.Project.Name : null
+        })
+        .ToListAsync(cancellationToken);
+
+    var tenantPublicIds = tenantMappings
+        .Select(x => x.PublicTenantId)
+        .ToArray();
+
+    var tenantDisplayByPublicId = tenantMappings
+        .ToDictionary(
+            x => x.PublicTenantId,
+            x => BuildTenantDisplayName(x.ProjectName, x.EnvironmentName),
+            StringComparer.Ordinal);
+
+    var response = await failureDetailsQueryService.QueryAsync(
+        scope,
+        tenantPublicIds,
+        tenantDisplayByPublicId,
+        payload.JobName,
+        payload.ErrorType,
+        payload.ErrorMessage,
         cancellationToken);
 
     return Results.Ok(response);

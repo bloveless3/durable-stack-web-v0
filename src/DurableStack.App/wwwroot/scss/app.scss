@@ -929,7 +929,7 @@
     color: var(--muted-ink);
   }
 
-  .dashboard-failure-table td:nth-child(5) {
+  .dashboard-failure-table td:nth-child(6) {
     max-width: 320px;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -939,6 +939,101 @@
   .dashboard-empty-row {
     @apply text-sm;
     color: var(--muted-ink);
+  }
+
+  .failure-row-action {
+    @apply h-8 rounded-md px-2.5 text-xs font-medium;
+  }
+
+  .failure-row-action i {
+    @apply text-[0.72rem];
+  }
+
+  .failure-message-info {
+    @apply ml-1 inline-flex align-middle;
+    color: color-mix(in srgb, var(--muted-ink) 84%, var(--content-ink));
+  }
+
+  .failure-message-info i {
+    @apply text-xs;
+  }
+
+  .failure-modal-backdrop {
+    @apply fixed inset-0 z-40;
+    background: rgba(15, 23, 42, 0.55);
+  }
+
+  .failure-modal-backdrop[hidden] {
+    display: none !important;
+  }
+
+  .failure-modal {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+  }
+
+  .failure-modal[hidden] {
+    display: none !important;
+  }
+
+  .failure-modal-card {
+    @apply flex max-h-[88vh] w-full max-w-5xl flex-col rounded-2xl border;
+    border-color: var(--card-border);
+    background: var(--card-bg);
+    box-shadow: 0 22px 56px -22px rgba(15, 23, 42, 0.55);
+  }
+
+  .failure-modal-header {
+    @apply flex items-center justify-between border-b px-5 py-3;
+    border-color: var(--card-border);
+  }
+
+  .failure-modal-header h3 {
+    @apply m-0 text-base font-semibold;
+    color: var(--title-ink);
+  }
+
+  .failure-modal-close {
+    @apply h-8 w-8 rounded-full border text-lg leading-none;
+    border-color: var(--card-border);
+    color: var(--content-ink);
+    background: color-mix(in srgb, var(--card-bg) 94%, #111827 6%);
+  }
+
+  .failure-modal-meta {
+    @apply border-b px-5 py-2 text-xs;
+    border-color: var(--card-border);
+    color: var(--muted-ink);
+  }
+
+  .failure-modal-content {
+    @apply overflow-auto p-5;
+  }
+
+  .failure-sample-card {
+    @apply mb-4 rounded-xl border p-4;
+    border-color: var(--card-border);
+    background: color-mix(in srgb, var(--card-bg) 92%, #111827 8%);
+  }
+
+  .failure-sample-head {
+    @apply mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs;
+    color: var(--muted-ink);
+  }
+
+  .failure-sample-label {
+    @apply mb-1 text-xs font-semibold uppercase;
+    color: var(--muted-ink);
+    letter-spacing: 0.03em;
+  }
+
+  .failure-sample-pre {
+    @apply m-0 overflow-auto rounded-md border p-3 text-xs;
+    border-color: color-mix(in srgb, var(--card-border) 80%, #111827 20%);
+    background: color-mix(in srgb, var(--card-bg) 84%, #111827 16%);
+    color: var(--content-ink);
+    max-height: 240px;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .panel-card {

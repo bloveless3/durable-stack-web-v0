@@ -589,11 +589,36 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
         IQueryable<TelemetryEvent> filteredEvents,
         CancellationToken cancellationToken)
     {
-        var terminalDurations = filteredEvents
+        var terminalEvents = filteredEvents
             .Where(x =>
                 (x.EventType == EventJobSucceeded || x.EventType == EventJobFailed) &&
                 x.DurationMs.HasValue)
-            .Select(x => x.DurationMs!.Value);
+            .Select(x => new
+            {
+                x.RunId,
+                x.OccurredAtUtc,
+                DurationMs = x.DurationMs!.Value
+            });
+
+        var latestRunAttempts = terminalEvents
+            .Where(x => x.RunId.HasValue)
+            .GroupBy(x => x.RunId!.Value)
+            .Select(g => new
+            {
+                RunId = g.Key,
+                OccurredAtUtc = g.Max(x => x.OccurredAtUtc)
+            });
+
+        var terminalDurations = terminalEvents
+            .Where(x => x.RunId == null)
+            .Select(x => x.DurationMs)
+            .Concat(
+                from evt in terminalEvents
+                join latest in latestRunAttempts
+                    on new { RunId = evt.RunId!.Value, evt.OccurredAtUtc }
+                    equals new { latest.RunId, latest.OccurredAtUtc }
+                where evt.RunId.HasValue
+                select evt.DurationMs);
 
         var count = await terminalDurations.CountAsync(cancellationToken);
         if (count == 0)
