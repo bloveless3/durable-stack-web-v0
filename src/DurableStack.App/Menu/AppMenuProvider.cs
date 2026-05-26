@@ -14,7 +14,7 @@ public sealed class AppMenuProvider : IAppMenuProvider
             Key = AppMenuKeys.Dashboard,
             Title = "Dashboard",
             Url = "/",
-            IconClass = "fa-solid fa-table-columns",
+            IconClass = "fa-solid fa-dashboard",
             AllowedRoles = AppRoles.All
         },
         new AppMenuItem

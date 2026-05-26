@@ -132,7 +132,7 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
             {
                 RunStarted = g.Count(x => x.EventType == EventJobStarted),
                 RunSucceeded = g.Count(x => x.EventType == EventJobSucceeded),
-                RunFailed = g.Count(x => x.EventType == EventJobFailed),
+                RunFailed = g.Count(x => x.EventType == EventJobFailed) - g.Count(x => x.EventType == EventJobRetried),
                 RunRetried = g.Count(x => x.EventType == EventJobRetried),
                 HeartbeatCount = g.Sum(x => x.EventType == EventWorkerHeartbeatBatch ? (x.HeartbeatCount ?? 0) : 0),
                 LastEventAtUtc = g.Max(x => (DateTimeOffset?)x.OccurredAtUtc)
@@ -150,7 +150,11 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
 
         var runStarted = (summaryAggregate?.RunStarted ?? 0) + rollupRows.Sum(x => x.RunStarted);
         var runSucceeded = (summaryAggregate?.RunSucceeded ?? 0) + rollupRows.Sum(x => x.RunSucceeded);
-        var runFailed = (summaryAggregate?.RunFailed ?? 0) + rollupRows.Sum(x => x.RunFailed);
+        var runFailed = Math.Max(
+            0,
+            (summaryAggregate?.RunFailed ?? 0)
+            + rollupRows.Sum(x => x.RunFailed)
+            - rollupRows.Sum(x => x.RunRetried));
         var runRetried = (summaryAggregate?.RunRetried ?? 0) + rollupRows.Sum(x => x.RunRetried);
         var heartbeatCount = (summaryAggregate?.HeartbeatCount ?? 0) + rollupRows.Sum(x => x.HeartbeatCount);
         var runsTotal = runSucceeded + runFailed;
@@ -384,6 +388,11 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
             point.HeartbeatCount += rollup.HeartbeatCount;
         }
 
+        foreach (var point in buckets.Values)
+        {
+            point.RunFailed = Math.Max(0, point.RunFailed - point.RunRetried);
+        }
+
         return buckets
             .OrderBy(x => x.Key)
             .Select(x => x.Value)
@@ -493,7 +502,7 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
                 SuccessRate = successRate,
                 RunStarted = aggregate.RunStarted,
                 RunSucceeded = aggregate.RunSucceeded,
-                RunFailed = aggregate.RunFailed,
+                RunFailed = Math.Max(0, aggregate.RunFailed - aggregate.RunRetried),
                 RunRetried = aggregate.RunRetried,
                 P95DurationMs = workerP95
             });

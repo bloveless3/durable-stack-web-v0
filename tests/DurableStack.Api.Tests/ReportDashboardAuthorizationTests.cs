@@ -172,9 +172,12 @@ public sealed class ReportDashboardAuthorizationTests
         Assert.Equal("15m", body.BucketSize);
         Assert.Equal(5, body.Summary.RunStarted);
         Assert.Equal(4, body.Summary.RunSucceeded);
-        Assert.Equal(2, body.Summary.RunFailed);
+        Assert.Equal(1, body.Summary.RunFailed);
         Assert.Equal(1, body.Summary.RunRetried);
         Assert.Equal(49, body.Summary.HeartbeatCount);
+        Assert.Equal(0.8, body.Summary.SuccessRate);
+        Assert.Equal(0.2, body.Summary.FailureRate);
+        Assert.Equal(1.0, body.Summary.SuccessRate + body.Summary.FailureRate, 6);
 
         Assert.Equal(body.Summary.RunStarted, body.Series.Sum(x => x.RunStarted));
         Assert.Equal(body.Summary.RunSucceeded, body.Series.Sum(x => x.RunSucceeded));

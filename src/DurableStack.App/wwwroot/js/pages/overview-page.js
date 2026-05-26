@@ -223,7 +223,6 @@
 
     const dataTable = new window.google.visualization.DataTable();
     dataTable.addColumn("datetime", "Time");
-    dataTable.addColumn("number", "Started");
     dataTable.addColumn("number", "Succeeded");
     dataTable.addColumn("number", "Failed");
     dataTable.addColumn("number", "Retried");
@@ -232,7 +231,6 @@
     points.forEach(function (point) {
       dataTable.addRow([
         new Date(point.bucketStartUtc),
-        point.runStarted || 0,
         point.runSucceeded || 0,
         point.runFailed || 0,
         point.runRetried || 0,
@@ -268,11 +266,10 @@
         baselineColor: "#d8e0da"
       },
       series: {
-        0: { color: "#2563eb", lineWidth: 2 },
-        1: { color: "#16a34a", lineWidth: 2 },
-        2: { color: "#dc2626", lineWidth: 2 },
-        3: { color: "#d97706", lineWidth: 2 },
-        4: { color: "#7c3aed", lineWidth: 2, targetAxisIndex: 1 }
+        0: { color: "#16a34a", lineWidth: 2 },
+        1: { color: "#dc2626", lineWidth: 2 },
+        2: { color: "#d97706", lineWidth: 2 },
+        3: { color: "#7c3aed", lineWidth: 2, targetAxisIndex: 1 }
       },
       vAxes: {
         0: {
@@ -383,14 +380,19 @@
 
       if (successRateEl) {
         successRateEl.textContent = toText(summary.successRate, "--");
+        const successRateRatio = Number(summary.successRate);
+        if (failureRateEl && Number.isFinite(successRateRatio)) {
+          const normalizedFailureRatio = Math.max(0, 1 - successRateRatio);
+          failureRateEl.textContent = toText(normalizedFailureRatio, "--");
+        }
       }
 
-      if (failureRateEl) {
+      if (failureRateEl && !Number.isFinite(Number(summary.successRate))) {
         failureRateEl.textContent = toText(summary.failureRate, "--");
       }
 
       if (retryRateEl) {
-        retryRateEl.textContent = toText(summary.retryRate, "--");
+        retryRateEl.textContent = toNumberText(summary.runRetried);
       }
 
       if (activeWorkersEl) {
