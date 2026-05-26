@@ -6,7 +6,7 @@ public sealed class GlobalFilterViewModel
 
     public string Project { get; init; } = "all-projects";
 
-    public string Environment { get; init; } = "all-environments";
+    public string Tenant { get; init; } = "all-tenants";
 
     public string TimeRange { get; init; } = "24h";
 }

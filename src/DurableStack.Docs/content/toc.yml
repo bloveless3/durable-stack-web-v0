@@ -1,5 +1,7 @@
 - name: Home
   href: index.md
+- name: Build Guides
+  href: build/toc.yml
 - name: API
   href: api/toc.yml
 - name: Problems

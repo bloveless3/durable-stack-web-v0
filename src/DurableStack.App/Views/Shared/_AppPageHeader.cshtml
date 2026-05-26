@@ -56,28 +56,30 @@
                     <label class="app-global-filter-field">
                         <span>Organization</span>
                         <select data-global-filter-key="global.filter.organization">
-                            <option value="all-organizations" selected="@(Model.GlobalFilters.Organization == "all-organizations")">All organizations</option>
-                            <option value="durablestack" selected="@(Model.GlobalFilters.Organization == "durablestack")">DurableStack</option>
-                            <option value="acme-platform" selected="@(Model.GlobalFilters.Organization == "acme-platform")">Acme Platform</option>
+                            @foreach (var option in Model.OrganizationOptions)
+                            {
+                                <option value="@option.Value" selected="@(Model.GlobalFilters.Organization == option.Value)">@option.Label</option>
+                            }
                         </select>
                     </label>
 
                     <label class="app-global-filter-field">
                         <span>Project</span>
                         <select data-global-filter-key="global.filter.project">
-                            <option value="all-projects" selected="@(Model.GlobalFilters.Project == "all-projects")">All projects</option>
-                            <option value="platform-core" selected="@(Model.GlobalFilters.Project == "platform-core")">Platform Core</option>
-                            <option value="ops-pipeline" selected="@(Model.GlobalFilters.Project == "ops-pipeline")">Ops Pipeline</option>
+                            @foreach (var option in Model.ProjectOptions)
+                            {
+                                <option value="@option.Value" selected="@(Model.GlobalFilters.Project == option.Value)">@option.Label</option>
+                            }
                         </select>
                     </label>
 
                     <label class="app-global-filter-field">
-                        <span>Environment</span>
-                        <select data-global-filter-key="global.filter.environment">
-                            <option value="all-environments" selected="@(Model.GlobalFilters.Environment == "all-environments")">All environments</option>
-                            <option value="prod" selected="@(Model.GlobalFilters.Environment == "prod")">Production</option>
-                            <option value="staging" selected="@(Model.GlobalFilters.Environment == "staging")">Staging</option>
-                            <option value="dev" selected="@(Model.GlobalFilters.Environment == "dev")">Development</option>
+                        <span>Tenant</span>
+                        <select data-global-filter-key="global.filter.tenant">
+                            @foreach (var option in Model.TenantOptions)
+                            {
+                                <option value="@option.Value" selected="@(Model.GlobalFilters.Tenant == option.Value)">@option.Label</option>
+                            }
                         </select>
                     </label>
 

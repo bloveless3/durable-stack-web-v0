@@ -12,5 +12,11 @@ public sealed class AppPageHeaderViewModel
 
     public GlobalFilterViewModel GlobalFilters { get; init; } = new();
 
+    public IReadOnlyList<GlobalFilterOption> OrganizationOptions { get; init; } = [];
+
+    public IReadOnlyList<GlobalFilterOption> ProjectOptions { get; init; } = [];
+
+    public IReadOnlyList<GlobalFilterOption> TenantOptions { get; init; } = [];
+
     public IHtmlContent? PageControls { get; init; }
 }

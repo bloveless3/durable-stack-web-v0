@@ -1,6 +1,8 @@
 ﻿@using DurableStack.App.Services.Identity
+@using System.Linq
 @inject ICurrentUserContext CurrentUserContext
 @inject IUserPreferenceService UserPreferenceService
+@inject IGlobalFilterOptionsProvider GlobalFilterOptionsProvider
 @{
     var sidebarCompactPreference = await UserPreferenceService.GetValueAsync(DurableStack.App.Services.Preferences.PreferenceKeys.UiSidebarCompact);
     var initialSidebarCompact = string.Equals(sidebarCompactPreference, "true", StringComparison.OrdinalIgnoreCase);
@@ -145,9 +147,44 @@
                     {
                         PreferenceKeys.GlobalFilterOrganization,
                         PreferenceKeys.GlobalFilterProject,
-                        PreferenceKeys.GlobalFilterEnvironment,
+                        PreferenceKeys.GlobalFilterTenant,
                         PreferenceKeys.GlobalFilterTimeRange
                     });
+
+                    var organizationOptions = await GlobalFilterOptionsProvider.GetOrganizationOptionsAsync();
+                    var projectOptions = await GlobalFilterOptionsProvider.GetProjectOptionsAsync();
+                    var tenantOptions = await GlobalFilterOptionsProvider.GetTenantOptionsAsync();
+
+                    var selectedOrganization = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterOrganization, out var organization)
+                        ? organization
+                        : "all-organizations";
+
+                    if (!organizationOptions.Any(x => x.Value == selectedOrganization))
+                    {
+                        selectedOrganization = "all-organizations";
+                    }
+
+                    var selectedProject = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterProject, out var project)
+                        ? project
+                        : "all-projects";
+
+                    if (!projectOptions.Any(x => x.Value == selectedProject))
+                    {
+                        selectedProject = "all-projects";
+                    }
+
+                    var selectedTenant = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterTenant, out var tenant)
+                        ? tenant
+                        : "all-tenants";
+
+                    if (!tenantOptions.Any(x => x.Value == selectedTenant))
+                    {
+                        selectedTenant = "all-tenants";
+                    }
+
+                    var selectedTimeRange = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterTimeRange, out var timeRange)
+                        ? timeRange
+                        : "24h";
 
                     var pageHeaderModel = new DurableStack.App.Models.Layout.AppPageHeaderViewModel
                     {
@@ -156,11 +193,14 @@
                         ShowGlobalFilters = Html.GetShowGlobalFilters(),
                         GlobalFilters = new DurableStack.App.Models.Layout.GlobalFilterViewModel
                         {
-                            Organization = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterOrganization, out var organization) ? organization : "all-organizations",
-                            Project = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterProject, out var project) ? project : "all-projects",
-                            Environment = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterEnvironment, out var environment) ? environment : "all-environments",
-                            TimeRange = globalFilterValues.TryGetValue(PreferenceKeys.GlobalFilterTimeRange, out var timeRange) ? timeRange : "24h"
+                            Organization = selectedOrganization,
+                            Project = selectedProject,
+                            Tenant = selectedTenant,
+                            TimeRange = selectedTimeRange
                         },
+                        OrganizationOptions = organizationOptions,
+                        ProjectOptions = projectOptions,
+                        TenantOptions = tenantOptions,
                         PageControls = pageControls
                     };
                 }

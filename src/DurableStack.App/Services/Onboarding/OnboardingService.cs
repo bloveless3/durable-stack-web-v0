@@ -184,8 +184,8 @@ public sealed class OnboardingService : IOnboardingService
         await _controlPlaneDbContext.SaveChangesAsync(cancellationToken);
 
         await _userPreferenceService.SetValueAsync(
-            PreferenceKeys.GlobalFilterEnvironment,
-            "dev",
+            PreferenceKeys.GlobalFilterTenant,
+            tenant.Id.ToString("D"),
             cancellationToken);
 
         return new ProvisionedTenantResult(tenant.PublicTenantId, rawSecret, tenant.EnvironmentName);

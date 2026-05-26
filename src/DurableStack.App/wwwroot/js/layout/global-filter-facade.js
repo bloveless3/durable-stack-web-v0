@@ -7,7 +7,7 @@
   const defaults = {
     [keys.globalFilterOrganization]: "all-organizations",
     [keys.globalFilterProject]: "all-projects",
-    [keys.globalFilterEnvironment]: "all-environments",
+    [keys.globalFilterTenant]: "all-tenants",
     [keys.globalFilterTimeRange]: "24h"
   };
 
@@ -15,7 +15,7 @@
     return {
       organization: preferenceMap[keys.globalFilterOrganization] || defaults[keys.globalFilterOrganization],
       project: preferenceMap[keys.globalFilterProject] || defaults[keys.globalFilterProject],
-      environment: preferenceMap[keys.globalFilterEnvironment] || defaults[keys.globalFilterEnvironment],
+      tenant: preferenceMap[keys.globalFilterTenant] || defaults[keys.globalFilterTenant],
       timeRange: preferenceMap[keys.globalFilterTimeRange] || defaults[keys.globalFilterTimeRange]
     };
   }

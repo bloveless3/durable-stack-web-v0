@@ -3,14 +3,14 @@
     uiSidebarCompact: "ui.sidebar.compact",
     globalFilterOrganization: "global.filter.organization",
     globalFilterProject: "global.filter.project",
-    globalFilterEnvironment: "global.filter.environment",
+    globalFilterTenant: "global.filter.tenant",
     globalFilterTimeRange: "global.filter.timeRange"
   };
 
   keys.globalFilterAll = [
     keys.globalFilterOrganization,
     keys.globalFilterProject,
-    keys.globalFilterEnvironment,
+    keys.globalFilterTenant,
     keys.globalFilterTimeRange
   ];
 

@@ -8,7 +8,6 @@
     //Html.AddBreadcrumbsPart("Worker Health");
 }
 
-@*
 @section PageControls {
     <span class="app-tooltip app-tooltip-left" data-dashboard-refresh-tooltip data-tip="Last load --">
         <button type="button" class="app-page-control-button app-page-control-button-icon" data-dashboard-refresh aria-label="Refresh dashboard data">
@@ -16,24 +15,23 @@
         </button>
     </span>
 }
-*@
 
 <section class="metrics-grid" aria-label="Health metrics">
     <article class="metric-card">
-        <p class="metric-label">API Status</p>
-        <p class="metric-value">@Model.ApiStatus</p>
+        <p class="metric-label">Dashboard</p>
+        <p class="metric-value" data-dashboard-status>@Model.DashboardStatus</p>
+    </article>
+    <article class="metric-card">
+        <p class="metric-label">Data Source</p>
+        <p class="metric-value metric-value-small">@Model.DataSource</p>
     </article>
     <article class="metric-card">
         <p class="metric-label">Total Events</p>
-        <p class="metric-value">@(Model.TotalEvents?.ToString() ?? "N/A")</p>
+        <p class="metric-value" data-total-events>@(Model.TotalEvents?.ToString() ?? "--")</p>
     </article>
     <article class="metric-card">
         <p class="metric-label">Failed Events</p>
-        <p class="metric-value">@(Model.FailedEvents?.ToString() ?? "N/A")</p>
-    </article>
-    <article class="metric-card">
-        <p class="metric-label">Tenant ID</p>
-        <p class="metric-value metric-value-small">@(Model.TenantId ?? "N/A")</p>
+        <p class="metric-value" data-failed-events>@(Model.FailedEvents?.ToString() ?? "--")</p>
     </article>
 </section>
 
@@ -46,15 +44,19 @@
         <dl class="detail-list">
             <div>
                 <dt>Last Event</dt>
-                <dd>@(Model.LastEventAtUtc?.ToString("u") ?? "N/A")</dd>
+                <dd data-last-event>@Model.LastEventAtUtc</dd>
             </div>
             <div>
-                <dt>Pipeline</dt>
-                <dd>Ingestion-policy enforced</dd>
+                <dt>Refresh</dt>
+                <dd>@Model.RefreshCadence (automatic)</dd>
             </div>
             <div>
-                <dt>Payload Model</dt>
-                <dd>Worker-stable contract</dd>
+                <dt>Last Query</dt>
+                <dd data-last-query>@Model.LastUpdateLabel</dd>
+            </div>
+            <div>
+                <dt>Feed State</dt>
+                <dd data-dashboard-feed-state>Fresh</dd>
             </div>
         </dl>
     </article>
@@ -64,12 +66,15 @@
             <h2>Build next</h2>
         </header>
         <ul class="task-list">
-            <li>Create organization management screens</li>
-            <li>Add project setup and tenant credential rotation</li>
-            <li>Connect docs search palette to marketing site index</li>
+            @foreach (var item in Model.BuildNextItems)
+            {
+                <li>@item</li>
+            }
         </ul>
     </article>
 </section>
+
+<input type="hidden" value="@(Model.NextCursor ?? string.Empty)" data-dashboard-next-cursor />
 
 @section Scripts {
     <script src="~/js/pages/overview-page.js" asp-append-version="true"></script>

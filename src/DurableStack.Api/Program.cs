@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text;
 using DurableStack.Api.Services;
 using DurableStack.ControlPlane;
 using DurableStack.ControlPlane.DependencyInjection;
@@ -7,8 +8,11 @@ using DurableStack.Platform.Contracts;
 using DurableStack.Telemetry;
 using DurableStack.Telemetry.DependencyInjection;
 using DurableStack.Telemetry.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Primitives;
 using Npgsql;
 
@@ -22,10 +26,52 @@ const int MaxCorrelationIdLength = 128;
 var builder = WebApplication.CreateBuilder(args);
 
 var docsBaseUrl = NormalizeDocsBaseUrl(builder.Configuration["Documentation:BaseUrl"]);
+var userJwtOptions = builder.Configuration.GetSection(UserJwtOptions.SectionPath).Get<UserJwtOptions>()
+    ?? new UserJwtOptions();
 
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
+builder.Services.AddScoped<IUserReportAccessService, UserReportAccessService>();
+
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(userJwtOptions.SigningKey));
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = userJwtOptions.RequireHttpsMetadata;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = userJwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = userJwtOptions.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = signingKey,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2)
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ReportsRead", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireAssertion(context =>
+        {
+            var scopeClaim = context.User.FindFirst("scope")?.Value;
+            if (string.IsNullOrWhiteSpace(scopeClaim))
+            {
+                return false;
+            }
+
+            var scopes = scopeClaim.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return scopes.Contains("reports.read", StringComparer.Ordinal);
+        });
+    });
+});
 
 if (!builder.Environment.IsEnvironment("Testing"))
 {
@@ -48,6 +94,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.Use(async (context, next) =>
 {
@@ -282,22 +330,74 @@ app.MapPost("/v1/events/batch", async (
     return Results.Ok(ToResponse(batch, isDuplicate: false, correlationId));
 });
 
-app.MapGet("/v1/reports/summary", async (
+app.MapPost("/v1/reports/summary/query", async (
     HttpContext context,
+    ReportSummaryQueryRequest? payload,
     ControlPlaneDbContext controlPlaneDb,
     TelemetryDbContext telemetryDb,
+    IUserReportAccessService accessService,
     CancellationToken cancellationToken) =>
 {
     var correlationId = ResolveCorrelationId(context);
-    var authResult = await context.Request.TryAuthenticateAsync(controlPlaneDb, cancellationToken);
-    if (!authResult.Success || authResult.TenantId is null)
+
+    if (!UserAccessContext.TryCreate(context.User, out var user) || user is null)
     {
-        return CreateAuthProblem(authResult, correlationId, docsBaseUrl);
+        return CreateProblem(
+            statusCode: StatusCodes.Status401Unauthorized,
+            title: "Unauthorized",
+            detail: "A valid user access token is required.",
+            type: BuildProblemTypeUrl(docsBaseUrl, "auth-failed"),
+            correlationId: correlationId,
+            code: "invalid_user_token");
     }
+
+    UserReportScope scope;
+
+    try
+    {
+        scope = await accessService.BuildScopeAsync(user, payload, cancellationToken);
+    }
+    catch (UserReportScopeException ex)
+    {
+        return CreateProblem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Invalid report query.",
+            detail: ex.Message,
+            type: BuildProblemTypeUrl(docsBaseUrl, "validation-failed"),
+            correlationId: correlationId,
+            code: ex.Code);
+    }
+
+    if (scope.TenantIds.Count == 0)
+    {
+        var emptyRunAtUtc = DateTimeOffset.UtcNow;
+
+        return Results.Ok(new ReportSummaryResponse
+        {
+            TotalEvents = 0,
+            FailedEvents = 0,
+            LastEventAtUtc = null,
+            ScopeTenantIds = [],
+            WindowStartUtc = scope.WindowStartUtc,
+            WindowEndUtc = scope.WindowEndUtc,
+            QueryRunAtUtc = emptyRunAtUtc,
+            NextCursor = BuildCursor(emptyRunAtUtc)
+        });
+    }
+
+    var tenantPublicIds = await controlPlaneDb.Tenants
+        .AsNoTracking()
+        .Where(x => scope.TenantIds.Contains(x.Id))
+        .Select(x => x.PublicTenantId)
+        .ToListAsync(cancellationToken);
 
     var events = telemetryDb.TelemetryEvents
         .AsNoTracking()
-        .Where(x => x.Batch != null && x.Batch.TenantPublicId == authResult.TenantId);
+        .Where(x =>
+            x.Batch != null &&
+            tenantPublicIds.Contains(x.Batch.TenantPublicId) &&
+            x.OccurredAtUtc >= scope.WindowStartUtc &&
+            x.OccurredAtUtc <= scope.WindowEndUtc);
 
     var totalEvents = await events.CountAsync(cancellationToken);
     var failedEvents = await events.CountAsync(x => x.EventType == "job_failed", cancellationToken);
@@ -306,14 +406,20 @@ app.MapGet("/v1/reports/summary", async (
         .Select(x => (DateTimeOffset?)x.OccurredAtUtc)
         .FirstOrDefaultAsync(cancellationToken);
 
+    var queryRunAtUtc = DateTimeOffset.UtcNow;
+
     return Results.Ok(new ReportSummaryResponse
     {
-        TenantId = authResult.TenantId,
         TotalEvents = totalEvents,
         FailedEvents = failedEvents,
-        LastEventAtUtc = lastEventAtUtc
+        LastEventAtUtc = lastEventAtUtc,
+        ScopeTenantIds = scope.TenantIds.Select(x => x.ToString("D")).ToArray(),
+        WindowStartUtc = scope.WindowStartUtc,
+        WindowEndUtc = scope.WindowEndUtc,
+        QueryRunAtUtc = queryRunAtUtc,
+        NextCursor = BuildCursor(queryRunAtUtc)
     });
-});
+}).RequireAuthorization("ReportsRead");
 
 app.Run();
 
@@ -575,6 +681,12 @@ static string NormalizeDocsBaseUrl(string? configuredBaseUrl)
 static string BuildProblemTypeUrl(string docsBaseUrl, string slug)
 {
     return $"{docsBaseUrl}/problems/{slug}";
+}
+
+static string BuildCursor(DateTimeOffset value)
+{
+    var unixMilliseconds = value.ToUnixTimeMilliseconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
+    return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(unixMilliseconds));
 }
 
 public partial class Program;

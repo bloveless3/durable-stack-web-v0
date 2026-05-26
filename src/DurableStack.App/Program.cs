@@ -1,10 +1,12 @@
 using DurableStack.ControlPlane.DependencyInjection;
-using DurableStack.App.Services.Api;
+using DurableStack.App.Configuration;
 using DurableStack.App.Data;
+using DurableStack.App.Services.Api;
 using DurableStack.App.Services.Identity;
 using DurableStack.App.Services.Onboarding;
 using DurableStack.App.Menu;
 using DurableStack.App.Services.Preferences;
+using DurableStack.App.Services.Reports;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +32,10 @@ builder.Services.AddHealthChecks();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+builder.Services.AddScoped<IGlobalFilterOptionsProvider, GlobalFilterOptionsProvider>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
+builder.Services.AddScoped<IUserApiTokenService, UserApiTokenService>();
+builder.Services.AddScoped<IReportsQueryService, ReportsQueryService>();
 builder.Services.AddSingleton<IAppMenuProvider, AppMenuProvider>();
 builder.Services.AddControlPlanePostgres(builder.Configuration);
 builder.Services.AddDbContext<AppIdentityDbContext>(options =>
@@ -60,16 +65,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
-builder.Services.Configure<DurableStackApiOptions>(
-    builder.Configuration.GetSection(DurableStackApiOptions.SectionName));
-builder.Services.AddHttpClient<DurableStackApiClient>((serviceProvider, client) =>
-{
-    var apiOptions = serviceProvider
-        .GetRequiredService<Microsoft.Extensions.Options.IOptions<DurableStackApiOptions>>()
-        .Value;
-
-    client.BaseAddress = new Uri(apiOptions.BaseUrl);
-});
+builder.Services.Configure<DurableStackApiOptions>(builder.Configuration.GetSection(DurableStackApiOptions.SectionName));
+builder.Services.Configure<UserApiTokenOptions>(builder.Configuration.GetSection("Authentication:UserJwt"));
+builder.Services.AddHttpClient<IReportsApiClient, ReportsApiClient>();
 
 var app = builder.Build();
 
