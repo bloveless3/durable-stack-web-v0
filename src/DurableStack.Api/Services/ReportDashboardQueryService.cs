@@ -2,6 +2,7 @@ using DurableStack.Platform.Contracts;
 using DurableStack.Telemetry;
 using DurableStack.Telemetry.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace DurableStack.Api.Services;
 
@@ -25,10 +26,14 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
     private const string EventWorkerHeartbeatBatch = "worker_heartbeat_batch";
 
     private readonly TelemetryDbContext _telemetryDb;
+    private readonly IOptionsMonitor<TelemetryLifecycleOptions> _lifecycleOptions;
 
-    public ReportDashboardQueryService(TelemetryDbContext telemetryDb)
+    public ReportDashboardQueryService(
+        TelemetryDbContext telemetryDb,
+        IOptionsMonitor<TelemetryLifecycleOptions> lifecycleOptions)
     {
         _telemetryDb = telemetryDb;
+        _lifecycleOptions = lifecycleOptions;
     }
 
     public async Task<ReportDashboardResponse> QueryAsync(
@@ -52,7 +57,55 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
                 x.OccurredAtUtc >= scope.WindowStartUtc &&
                 x.OccurredAtUtc < scope.WindowEndUtc);
 
-        var summaryAggregate = await filteredEvents
+        var hybridEnabled = _lifecycleOptions.CurrentValue.Query.EnableHybridRollupReads &&
+                            !string.Equals(scope.Timeframe, "last_hour", StringComparison.Ordinal);
+
+        var rawRecentWindowStartUtc = scope.WindowStartUtc;
+        var rollupWindowStartUtc = scope.WindowStartUtc;
+        var rollupWindowEndUtc = scope.WindowStartUtc;
+
+        if (hybridEnabled)
+        {
+            var boundaryUtc = scope.WindowEndUtc.AddHours(-1);
+            if (boundaryUtc > scope.WindowStartUtc)
+            {
+                var boundaryBucketUtc = AlignToBucket(boundaryUtc, scope.BucketInterval);
+                rawRecentWindowStartUtc = boundaryBucketUtc;
+                rollupWindowEndUtc = boundaryBucketUtc;
+            }
+            else
+            {
+                hybridEnabled = false;
+            }
+        }
+
+        var rawRecentEvents = filteredEvents.Where(x => x.OccurredAtUtc >= rawRecentWindowStartUtc);
+
+        List<TelemetryBucketRollup> rollupRows = [];
+        List<TelemetryFailureGroupRollup> failureRollupRows = [];
+
+        if (hybridEnabled)
+        {
+            rollupRows = await _telemetryDb.TelemetryBucketRollups
+                .AsNoTracking()
+                .Where(x =>
+                    tenantPublicIds.Contains(x.TenantPublicId) &&
+                    x.BucketSize == scope.BucketSize &&
+                    x.BucketStartUtc >= rollupWindowStartUtc &&
+                    x.BucketStartUtc < rollupWindowEndUtc)
+                .ToListAsync(cancellationToken);
+
+            failureRollupRows = await _telemetryDb.TelemetryFailureGroupRollups
+                .AsNoTracking()
+                .Where(x =>
+                    tenantPublicIds.Contains(x.TenantPublicId) &&
+                    x.BucketSize == scope.BucketSize &&
+                    x.BucketStartUtc >= rollupWindowStartUtc &&
+                    x.BucketStartUtc < rollupWindowEndUtc)
+                .ToListAsync(cancellationToken);
+        }
+
+        var summaryAggregate = await rawRecentEvents
             .GroupBy(_ => 1)
             .Select(g => new
             {
@@ -65,12 +118,17 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
             })
             .SingleOrDefaultAsync(cancellationToken);
 
-        var runStarted = summaryAggregate?.RunStarted ?? 0;
-        var runSucceeded = summaryAggregate?.RunSucceeded ?? 0;
-        var runFailed = summaryAggregate?.RunFailed ?? 0;
-        var runRetried = summaryAggregate?.RunRetried ?? 0;
-        var heartbeatCount = summaryAggregate?.HeartbeatCount ?? 0;
+        var runStarted = (summaryAggregate?.RunStarted ?? 0) + rollupRows.Sum(x => x.RunStarted);
+        var runSucceeded = (summaryAggregate?.RunSucceeded ?? 0) + rollupRows.Sum(x => x.RunSucceeded);
+        var runFailed = (summaryAggregate?.RunFailed ?? 0) + rollupRows.Sum(x => x.RunFailed);
+        var runRetried = (summaryAggregate?.RunRetried ?? 0) + rollupRows.Sum(x => x.RunRetried);
+        var heartbeatCount = (summaryAggregate?.HeartbeatCount ?? 0) + rollupRows.Sum(x => x.HeartbeatCount);
         var runsTotal = runSucceeded + runFailed;
+        var rollupLastEventAtUtc = rollupRows
+            .Where(x => x.LastEventAtUtc.HasValue)
+            .Select(x => x.LastEventAtUtc)
+            .OrderByDescending(x => x)
+            .FirstOrDefault();
 
         var summary = new ReportDashboardSummary
         {
@@ -83,29 +141,94 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
             FailureRate = runsTotal == 0 ? 0d : (double)runFailed / runsTotal,
             RetryRate = runStarted == 0 ? 0d : (double)runRetried / runStarted,
             HeartbeatCount = heartbeatCount,
-            LastEventAtUtc = summaryAggregate?.LastEventAtUtc
+            LastEventAtUtc = Max(summaryAggregate?.LastEventAtUtc, rollupLastEventAtUtc)
         };
 
         summary.P95DurationMs = await CalculateP95DurationMsAsync(filteredEvents, cancellationToken);
 
-        var series = await BuildSeriesAsync(filteredEvents, scope, cancellationToken);
+        var series = await BuildSeriesAsync(rawRecentEvents, rollupRows, scope, cancellationToken);
         var workers = await BuildWorkersAsync(filteredEvents, scope, queryRunAtUtc, tenantDisplayByPublicId, cancellationToken);
-        var recentFailures = await filteredEvents
+        var failureRows = await rawRecentEvents
             .Where(x => x.EventType == EventJobFailed)
-            .OrderByDescending(x => x.OccurredAtUtc)
-            .Take(50)
-            .Select(x => new ReportDashboardFailureItem
+            .Select(x => new
             {
-                OccurredAtUtc = x.OccurredAtUtc,
-                JobName = x.JobName,
-                WorkerName = x.WorkerName,
-                RunId = x.RunId,
-                Attempt = x.Attempt,
-                ErrorType = x.ErrorType,
-                ErrorMessage = x.ErrorMessage,
-                DurationMs = x.DurationMs
+                x.OccurredAtUtc,
+                x.JobName,
+                x.WorkerName,
+                x.Attempt,
+                x.ErrorType,
+                x.ErrorMessage,
+                x.DurationMs,
+                TenantPublicId = x.Batch != null ? x.Batch.TenantPublicId : null
             })
             .ToListAsync(cancellationToken);
+
+        var failureGroupMap = new Dictionary<(string TenantPublicId, string JobName, string ErrorType, string ErrorMessage), ReportDashboardFailureGroupItem>();
+
+        foreach (var rawGroup in failureRows
+            .GroupBy(x => new
+            {
+                TenantPublicId = NormalizeFailureKey(x.TenantPublicId),
+                JobName = NormalizeFailureKey(x.JobName),
+                ErrorType = NormalizeFailureKey(x.ErrorType),
+                ErrorMessage = NormalizeFailureKey(x.ErrorMessage)
+            }))
+        {
+            var latest = rawGroup
+                .OrderByDescending(x => x.OccurredAtUtc)
+                .First();
+
+            failureGroupMap[(rawGroup.Key.TenantPublicId, rawGroup.Key.JobName, rawGroup.Key.ErrorType, rawGroup.Key.ErrorMessage)] = new ReportDashboardFailureGroupItem
+            {
+                TenantDisplayName = ResolveTenantDisplayName(rawGroup.Key.TenantPublicId, tenantDisplayByPublicId),
+                JobName = latest.JobName,
+                ErrorType = latest.ErrorType,
+                ErrorMessage = latest.ErrorMessage,
+                FailureCount = rawGroup.Count(),
+                FirstOccurredAtUtc = rawGroup.Min(x => x.OccurredAtUtc),
+                LastOccurredAtUtc = rawGroup.Max(x => x.OccurredAtUtc),
+                WorkerName = latest.WorkerName,
+                Attempt = latest.Attempt,
+                DurationMs = latest.DurationMs
+            };
+        }
+
+        foreach (var rollup in failureRollupRows)
+        {
+            var key = (
+                NormalizeFailureKey(rollup.TenantPublicId),
+                NormalizeFailureKey(rollup.JobName),
+                NormalizeFailureKey(rollup.ErrorType),
+                NormalizeFailureKey(rollup.ErrorMessage));
+
+            if (failureGroupMap.TryGetValue(key, out var existing))
+            {
+                existing.FailureCount += rollup.FailureCount;
+                existing.FirstOccurredAtUtc = Min(existing.FirstOccurredAtUtc, rollup.FirstOccurredAtUtc);
+                existing.LastOccurredAtUtc = Max(existing.LastOccurredAtUtc, rollup.LastOccurredAtUtc);
+                existing.TenantDisplayName ??= ResolveTenantDisplayName(rollup.TenantPublicId, tenantDisplayByPublicId);
+            }
+            else
+            {
+                failureGroupMap[key] = new ReportDashboardFailureGroupItem
+                {
+                    TenantDisplayName = ResolveTenantDisplayName(rollup.TenantPublicId, tenantDisplayByPublicId),
+                    JobName = rollup.JobName,
+                    ErrorType = rollup.ErrorType,
+                    ErrorMessage = rollup.ErrorMessage,
+                    FailureCount = rollup.FailureCount,
+                    FirstOccurredAtUtc = rollup.FirstOccurredAtUtc,
+                    LastOccurredAtUtc = rollup.LastOccurredAtUtc
+                };
+            }
+        }
+
+        var failureGroups = failureGroupMap
+            .Values
+            .OrderByDescending(x => x.FailureCount)
+            .ThenByDescending(x => x.LastOccurredAtUtc)
+            .Take(50)
+            .ToList();
 
         summary.ActiveWorkers = workers.StatusCounts.Online + workers.StatusCounts.Warn;
 
@@ -120,7 +243,7 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
             Summary = summary,
             Series = series,
             Workers = workers,
-            RecentFailures = recentFailures
+            FailureGroups = failureGroups
         };
     }
 
@@ -137,7 +260,7 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
             Summary = new ReportDashboardSummary(),
             Series = BuildEmptySeries(scope),
             Workers = new ReportDashboardWorkers(),
-            RecentFailures = []
+            FailureGroups = []
         };
     }
 
@@ -158,6 +281,7 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
 
     private async Task<List<ReportDashboardSeriesPoint>> BuildSeriesAsync(
         IQueryable<TelemetryEvent> filteredEvents,
+        IReadOnlyCollection<TelemetryBucketRollup> rollupRows,
         UserDashboardReportScope scope,
         CancellationToken cancellationToken)
     {
@@ -205,6 +329,20 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
                     point.HeartbeatCount += item.HeartbeatCount ?? 0;
                     break;
             }
+        }
+
+        foreach (var rollup in rollupRows)
+        {
+            if (!buckets.TryGetValue(rollup.BucketStartUtc, out var point))
+            {
+                continue;
+            }
+
+            point.RunStarted += rollup.RunStarted;
+            point.RunSucceeded += rollup.RunSucceeded;
+            point.RunFailed += rollup.RunFailed;
+            point.RunRetried += rollup.RunRetried;
+            point.HeartbeatCount += rollup.HeartbeatCount;
         }
 
         return buckets
@@ -350,6 +488,53 @@ public sealed class ReportDashboardQueryService : IReportDashboardQueryService
         return tenantDisplayByPublicId.TryGetValue(tenantPublicId, out var displayName)
             ? displayName
             : null;
+    }
+
+    private static string NormalizeFailureKey(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? "(unknown)"
+            : value.Trim();
+    }
+
+    private static DateTimeOffset Min(DateTimeOffset left, DateTimeOffset right)
+    {
+        return left <= right ? left : right;
+    }
+
+    private static DateTimeOffset? Min(DateTimeOffset? left, DateTimeOffset? right)
+    {
+        if (!left.HasValue)
+        {
+            return right;
+        }
+
+        if (!right.HasValue)
+        {
+            return left;
+        }
+
+        return left.Value <= right.Value ? left : right;
+    }
+
+    private static DateTimeOffset Max(DateTimeOffset left, DateTimeOffset right)
+    {
+        return left >= right ? left : right;
+    }
+
+    private static DateTimeOffset? Max(DateTimeOffset? left, DateTimeOffset? right)
+    {
+        if (!left.HasValue)
+        {
+            return right;
+        }
+
+        if (!right.HasValue)
+        {
+            return left;
+        }
+
+        return left.Value >= right.Value ? left : right;
     }
 
     private async Task<double?> CalculateP95DurationMsAsync(

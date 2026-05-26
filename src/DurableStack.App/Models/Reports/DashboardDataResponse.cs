@@ -18,7 +18,7 @@ public sealed class DashboardDataResponse
 
     public DashboardWorkersData Workers { get; set; } = new();
 
-    public List<DashboardFailureData> RecentFailures { get; set; } = [];
+    public List<DashboardFailureGroupData> FailureGroups { get; set; } = [];
 }
 
 public sealed class DashboardSummaryData
@@ -108,21 +108,25 @@ public sealed class DashboardWorkerItemData
     public string P95DurationMs { get; set; } = "N/A";
 }
 
-public sealed class DashboardFailureData
+public sealed class DashboardFailureGroupData
 {
-    public string OccurredAtUtc { get; set; } = string.Empty;
+    public string TenantDisplayName { get; set; } = "N/A";
 
     public string JobName { get; set; } = "(unknown)";
-
-    public string WorkerName { get; set; } = "(unknown)";
-
-    public string RunId { get; set; } = "N/A";
-
-    public string Attempt { get; set; } = "N/A";
 
     public string ErrorType { get; set; } = "N/A";
 
     public string ErrorMessage { get; set; } = "N/A";
+
+    public int FailureCount { get; set; }
+
+    public string FirstOccurredAtUtc { get; set; } = "N/A";
+
+    public string LastOccurredAtUtc { get; set; } = "N/A";
+
+    public string WorkerName { get; set; } = "(unknown)";
+
+    public string Attempt { get; set; } = "N/A";
 
     public string DurationMs { get; set; } = "N/A";
 }

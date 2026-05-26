@@ -108,16 +108,18 @@ public sealed class ReportsQueryService : IReportsQueryService
                     })
                     .ToList()
             },
-            RecentFailures = dashboard.RecentFailures
-                .Select(x => new DashboardFailureData
+            FailureGroups = dashboard.FailureGroups
+                .Select(x => new DashboardFailureGroupData
                 {
-                    OccurredAtUtc = FormatUtc(x.OccurredAtUtc),
+                    TenantDisplayName = string.IsNullOrWhiteSpace(x.TenantDisplayName) ? "N/A" : x.TenantDisplayName,
                     JobName = string.IsNullOrWhiteSpace(x.JobName) ? "(unknown)" : x.JobName,
-                    WorkerName = string.IsNullOrWhiteSpace(x.WorkerName) ? "(unknown)" : x.WorkerName,
-                    RunId = x.RunId?.ToString("D") ?? "N/A",
-                    Attempt = x.Attempt?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
                     ErrorType = string.IsNullOrWhiteSpace(x.ErrorType) ? "N/A" : x.ErrorType,
                     ErrorMessage = string.IsNullOrWhiteSpace(x.ErrorMessage) ? "N/A" : x.ErrorMessage,
+                    FailureCount = x.FailureCount,
+                    FirstOccurredAtUtc = FormatUtc(x.FirstOccurredAtUtc),
+                    LastOccurredAtUtc = FormatUtc(x.LastOccurredAtUtc),
+                    WorkerName = string.IsNullOrWhiteSpace(x.WorkerName) ? "(unknown)" : x.WorkerName,
+                    Attempt = x.Attempt?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "N/A",
                     DurationMs = FormatNumberOrFallback(x.DurationMs)
                 })
                 .ToList()

@@ -1,0 +1,21 @@
+{
+  "name": "DurableStack",
+  "short_name": "DurableStack",
+  "icons": [
+    {
+      "src": "/images/icons/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/icons/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#11251d",
+  "background_color": "#f4f6f5",
+  "display": "standalone"
+}

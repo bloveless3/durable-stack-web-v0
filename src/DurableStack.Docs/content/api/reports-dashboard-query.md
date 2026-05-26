@@ -125,15 +125,17 @@ Workers are classified using freshness at query time (`queryRunAtUtc`):
       }
     ]
   },
-  "recentFailures": [
+  "failureGroups": [
     {
-      "occurredAtUtc": "2026-05-25T23:58:44.210Z",
+      "tenantDisplayName": "Demo Project - Production",
       "jobName": "nightly-sync",
-      "workerName": "worker-b",
-      "runId": "98338e3f-66d8-45f0-ac31-c8c2a6e603f3",
-      "attempt": 2,
       "errorType": "TimeoutException",
       "errorMessage": "Execution timed out after 30s",
+      "failureCount": 148,
+      "firstOccurredAtUtc": "2026-05-25T18:11:02.000Z",
+      "lastOccurredAtUtc": "2026-05-25T23:58:44.210Z",
+      "workerName": "worker-b",
+      "attempt": 2,
       "durationMs": 30000
     }
   ]
@@ -145,7 +147,8 @@ Workers are classified using freshness at query time (`queryRunAtUtc`):
 - `summary` powers top KPI cards.
 - `series` powers main time-series chart.
 - `workers` powers right panel worker health cards.
-- `recentFailures` powers bottom table and is sorted descending by `occurredAtUtc`.
+- `failureGroups` powers bottom table and is grouped by tenant + job + error type + error message.
+- `failureGroups` is sorted by highest `failureCount`, then by latest occurrence.
 - `series` must include zero-value buckets to render continuous charts.
 - Response values are authoritative for the selected timeframe window (not incremental delta values).
 

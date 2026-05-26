@@ -20,7 +20,7 @@ public sealed class ReportDashboardResponse
 
     public ReportDashboardWorkers Workers { get; set; } = new();
 
-    public List<ReportDashboardFailureItem> RecentFailures { get; set; } = [];
+    public List<ReportDashboardFailureGroupItem> FailureGroups { get; set; } = [];
 }
 
 public sealed class ReportDashboardSummary
@@ -112,21 +112,25 @@ public sealed class ReportDashboardWorkerItem
     public double? P95DurationMs { get; set; }
 }
 
-public sealed class ReportDashboardFailureItem
+public sealed class ReportDashboardFailureGroupItem
 {
-    public DateTimeOffset OccurredAtUtc { get; set; }
+    public string? TenantDisplayName { get; set; }
 
     public string? JobName { get; set; }
-
-    public string? WorkerName { get; set; }
-
-    public Guid? RunId { get; set; }
-
-    public int? Attempt { get; set; }
 
     public string? ErrorType { get; set; }
 
     public string? ErrorMessage { get; set; }
+
+    public int FailureCount { get; set; }
+
+    public DateTimeOffset FirstOccurredAtUtc { get; set; }
+
+    public DateTimeOffset LastOccurredAtUtc { get; set; }
+
+    public string? WorkerName { get; set; }
+
+    public int? Attempt { get; set; }
 
     public double? DurationMs { get; set; }
 }

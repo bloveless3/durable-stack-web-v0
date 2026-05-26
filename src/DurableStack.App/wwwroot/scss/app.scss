@@ -93,6 +93,25 @@
   .app-header-brand {
     @apply absolute left-1/2 -translate-x-1/2 text-base font-semibold tracking-tight;
     color: var(--header-ink);
+    line-height: 1;
+  }
+
+  .app-brand-logo {
+    display: block;
+    height: 28px;
+    width: auto;
+  }
+
+  .app-brand-logo-dark {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .app-brand-logo-light {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .app-brand-logo-dark {
+    display: block;
   }
 
   .app-header-tools {
@@ -924,10 +943,6 @@
   .dashboard-empty-row {
     @apply text-sm;
     color: var(--muted-ink);
-  }
-
-  .dashboard-meta-panel {
-    @apply mt-3;
   }
 
   .panel-card {

@@ -78,19 +78,19 @@
 
 <section class="panel-card dashboard-failures-panel" aria-label="Recent failures">
     <header class="panel-header">
-        <h2>Recent failures</h2>
-        <span class="panel-meta">Most recent 50</span>
+        <h2>Failure groups</h2>
+        <span class="panel-meta">Top 50 grouped issues</span>
     </header>
     <div class="dashboard-failure-table-wrap">
         <table class="dashboard-failure-table">
             <thead>
                 <tr>
-                    <th>Time (UTC)</th>
+                    <th>Count</th>
+                    <th>Tenant</th>
                     <th>Job</th>
-                    <th>Worker</th>
                     <th>Error</th>
                     <th>Message</th>
-                    <th>Run</th>
+                    <th>Last Seen</th>
                 </tr>
             </thead>
             <tbody data-failures-table-body>
@@ -100,31 +100,6 @@
             </tbody>
         </table>
     </div>
-</section>
-
-<section class="panel-card dashboard-meta-panel" aria-label="Dashboard metadata">
-    <dl class="detail-list">
-        <div>
-            <dt>Dashboard State</dt>
-            <dd data-dashboard-status>@Model.DashboardStatus</dd>
-        </div>
-        <div>
-            <dt>Data Source</dt>
-            <dd class="metric-value-small">@Model.DataSource</dd>
-        </div>
-        <div>
-            <dt>Last Event</dt>
-            <dd data-last-event>@Model.LastEventAtUtc</dd>
-        </div>
-        <div>
-            <dt>Last Query</dt>
-            <dd data-last-query>@Model.LastUpdateLabel</dd>
-        </div>
-        <div>
-            <dt>Feed State</dt>
-            <dd data-dashboard-feed-state>Fresh</dd>
-        </div>
-    </dl>
 </section>
 
 @section Scripts {

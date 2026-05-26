@@ -1,7 +1,6 @@
 (function () {
   const refreshTrigger = document.querySelector("[data-dashboard-refresh]");
   const refreshTooltip = document.querySelector("[data-dashboard-refresh-tooltip]");
-  const statusEl = document.querySelector("[data-dashboard-status]");
   const runsTotalEl = document.querySelector("[data-kpi-runs-total]");
   const successRateEl = document.querySelector("[data-kpi-success-rate]");
   const failureRateEl = document.querySelector("[data-kpi-failure-rate]");
@@ -9,9 +8,6 @@
   const activeWorkersEl = document.querySelector("[data-kpi-active-workers]");
   const p95DurationEl = document.querySelector("[data-kpi-p95-duration]");
   const timeframeEl = document.querySelector("[data-dashboard-timeframe]");
-  const lastEventEl = document.querySelector("[data-last-event]");
-  const lastQueryEl = document.querySelector("[data-last-query]");
-  const feedStateEl = document.querySelector("[data-dashboard-feed-state]");
   const chartEl = document.querySelector("[data-runs-chart]");
   const chartEmptyEl = document.querySelector("[data-runs-chart-empty]");
   const workerOnlineCountEl = document.querySelector("[data-worker-online-count]");
@@ -23,10 +19,16 @@
   const pollIntervalMs = 15000;
   const staleAfterMs = 45000;
   const maxAttempts = 3;
+  const maxConsecutiveFailures = 8;
   let inFlight = false;
+  let pollingIntervalId = 0;
+  let pollingPaused = false;
+  let consecutiveFailures = 0;
+  let staleHardStopNotified = false;
   let lastSuccessfulQueryAtMs = 0;
   let staleTimerId = 0;
   let googleChartsReady = false;
+  let staleNotified = false;
   const expandedWorkers = new Set();
 
   function formatLastLoadLabel(dateValue) {
@@ -43,18 +45,6 @@
     }
 
     refreshTooltip.setAttribute("data-tip", formatLastLoadLabel(new Date()));
-  }
-
-  function setStatus(value) {
-    if (statusEl) {
-      statusEl.textContent = value;
-    }
-  }
-
-  function setFeedState(value) {
-    if (feedStateEl) {
-      feedStateEl.textContent = value;
-    }
   }
 
   function toNumberText(value) {
@@ -105,7 +95,7 @@
     const parts = new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
-      hour: "2-digit",
+      hour: "numeric",
       minute: "2-digit",
       second: "2-digit",
       hour12: true,
@@ -180,12 +170,12 @@
       .replaceAll("'", "&#39;");
   }
 
-  function renderFailures(failures) {
+  function renderFailures(failureGroups) {
     if (!failuresBodyEl) {
       return;
     }
 
-    const rows = Array.isArray(failures) ? failures : [];
+    const rows = Array.isArray(failureGroups) ? failureGroups : [];
     if (rows.length === 0) {
       failuresBodyEl.innerHTML = '<tr><td colspan="6" class="dashboard-empty-row">No failures in this window.</td></tr>';
       return;
@@ -194,12 +184,12 @@
     failuresBodyEl.innerHTML = rows.map(function (item) {
       return `
         <tr>
-          <td>${escapeHtml(toText(item.occurredAtUtc, "N/A"))}</td>
+          <td>${escapeHtml(toText(item.failureCount, 0))}</td>
+          <td>${escapeHtml(toText(item.tenantDisplayName, "N/A"))}</td>
           <td>${escapeHtml(toText(item.jobName, "(unknown)"))}</td>
-          <td>${escapeHtml(toText(item.workerName, "(unknown)"))}</td>
           <td>${escapeHtml(toText(item.errorType, "N/A"))}</td>
           <td title="${escapeHtml(toText(item.errorMessage, "N/A"))}">${escapeHtml(toText(item.errorMessage, "N/A"))}</td>
-          <td>${escapeHtml(toText(item.runId, "N/A"))}</td>
+          <td>${escapeHtml(toText(item.lastOccurredAtUtc, "N/A"))}</td>
         </tr>
       `;
     }).join("");
@@ -327,7 +317,10 @@
     staleTimerId = window.setTimeout(function () {
       const nowMs = Date.now();
       if (!lastSuccessfulQueryAtMs || nowMs - lastSuccessfulQueryAtMs >= staleAfterMs) {
-        setFeedState("Stale");
+        if (!staleNotified && window.durableStackToasts) {
+          window.durableStackToasts.showWarning("Dashboard data may be stale. Retrying in background.", 3500);
+          staleNotified = true;
+        }
       }
     }, staleAfterMs + 50);
   }
@@ -365,19 +358,22 @@
       return;
     }
 
+    if (pollingPaused && !isManual) {
+      return;
+    }
+
     inFlight = true;
 
     if (isManual) {
-      setStatus("Refreshing");
+      if (window.durableStackToasts) {
+        window.durableStackToasts.showInfo("Refreshing dashboard...", 1200);
+      }
     }
 
     try {
       const response = await requestWithBackoff();
 
       const data = response.data || {};
-
-      setStatus(data.status || "Connected");
-      setFeedState("Fresh");
 
       const summary = data.summary || {};
 
@@ -409,28 +405,59 @@
         timeframeEl.textContent = timeframeLabel(data.timeframe, data.bucketSize);
       }
 
-      if (lastEventEl) {
-        lastEventEl.textContent = toText(data.lastEventAtUtc, "N/A");
-      }
-
-      if (lastQueryEl) {
-        lastQueryEl.textContent = toText(data.queryRunAtUtc, "N/A");
-      }
-
       window.__durableStackLastSeries = data.series || [];
       renderChart(window.__durableStackLastSeries);
       renderWorkers(data.workers || null);
-      renderFailures(data.recentFailures || []);
+      renderFailures(data.failureGroups || []);
 
       setLastLoaded();
       lastSuccessfulQueryAtMs = Date.now();
+      consecutiveFailures = 0;
+      staleNotified = false;
+      staleHardStopNotified = false;
+
+      if (pollingPaused) {
+        pollingPaused = false;
+        if (!pollingIntervalId) {
+          pollingIntervalId = window.setInterval(function () {
+            fetchDashboard(false);
+          }, pollIntervalMs);
+        }
+      }
+
       scheduleStaleCheck();
     } catch (error) {
-      setStatus("Unavailable");
-      setFeedState("Retrying");
+      consecutiveFailures += 1;
 
-      if (window.durableStackToasts && isManual) {
-        window.durableStackToasts.showError("Could not refresh dashboard data.", 5000);
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        pollingPaused = true;
+
+        if (pollingIntervalId) {
+          window.clearInterval(pollingIntervalId);
+          pollingIntervalId = 0;
+        }
+
+        if (staleTimerId) {
+          window.clearTimeout(staleTimerId);
+          staleTimerId = 0;
+        }
+
+        if (!staleHardStopNotified && window.durableStackToasts) {
+          window.durableStackToasts.showWarning(
+            "Dashboard data is stale and cannot be refreshed right now. Please try again later.",
+            0
+          );
+          staleHardStopNotified = true;
+        }
+
+        return;
+      }
+
+      if (window.durableStackToasts) {
+        window.durableStackToasts.showError(
+          isManual ? "Could not refresh dashboard data." : "Dashboard refresh failed. Retrying.",
+          5000
+        );
       }
     } finally {
       inFlight = false;
@@ -483,7 +510,7 @@
 
   fetchDashboard(false);
   scheduleStaleCheck();
-  window.setInterval(function () {
+  pollingIntervalId = window.setInterval(function () {
     fetchDashboard(false);
   }, pollIntervalMs);
 

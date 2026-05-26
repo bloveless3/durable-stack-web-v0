@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  :root[data-theme="dark"] .auth-brand-logo-light {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .auth-brand-logo-dark {
+    display: inline-block;
+  }
+
   body.auth-body {
     @apply min-h-screen text-slate-800;
     background: linear-gradient(120deg, rgba(248, 250, 252, 0.86) 0%, rgba(244, 247, 251, 0.82) 100%),
@@ -24,6 +32,17 @@
 
   .auth-brand {
     @apply m-0 text-center text-xs font-semibold uppercase tracking-[0.12em] text-slate-600;
+  }
+
+  .auth-brand-logo {
+    display: inline-block;
+    height: 28px;
+    width: auto;
+    vertical-align: middle;
+  }
+
+  .auth-brand-logo-dark {
+    display: none;
   }
 
   .auth-success-callout {

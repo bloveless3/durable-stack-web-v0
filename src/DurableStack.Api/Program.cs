@@ -32,8 +32,14 @@ var userJwtOptions = builder.Configuration.GetSection(UserJwtOptions.SectionPath
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
+builder.Services.AddOptions<TelemetryLifecycleOptions>()
+    .Bind(builder.Configuration.GetSection(TelemetryLifecycleOptions.SectionName))
+    .ValidateOnStart();
 builder.Services.AddScoped<IUserReportAccessService, UserReportAccessService>();
 builder.Services.AddScoped<IReportDashboardQueryService, ReportDashboardQueryService>();
+builder.Services.AddSingleton<ITelemetryRollupJob, TelemetryRollupJob>();
+builder.Services.AddSingleton<ITelemetryRetentionJob, TelemetryRetentionJob>();
+builder.Services.AddHostedService<LocalTelemetryLifecycleScheduler>();
 
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(userJwtOptions.SigningKey));
 

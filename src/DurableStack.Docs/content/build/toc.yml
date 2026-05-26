@@ -2,3 +2,5 @@
   href: app-build.md
 - name: API Build Guide
   href: api-build.md
+- name: Data Lifecycle and Rollups
+  href: data-lifecycle-and-rollups.md

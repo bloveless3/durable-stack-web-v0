@@ -81,15 +81,18 @@ Status thresholds (initial default):
 
 ## Bottom panel
 
-Recent failures table:
+Grouped failures table:
 
-- `occurredAtUtc`
+- `failureCount`
+- `tenantDisplayName`
 - `jobName`
-- `workerName`
-- `runId`
-- `attempt`
 - `errorType`
-- `errorMessage` (trimmed preview + full detail)
+- `errorMessage`
+- `lastOccurredAtUtc`
+
+Grouping key:
+
+- tenant + job + error type + error message
 
 ## Metric definitions
 
@@ -128,7 +131,7 @@ To support high tenant volume and large telemetry growth, v1 dashboard query des
   - `telemetry_events(event_type, occurred_at_utc)`
   - `telemetry_events(occurred_at_utc, batch_id)`
   - `telemetry_events(worker_name, occurred_at_utc)`
-- Strictly capped failure table size per request (`TOP 50` / `LIMIT 50`).
+- Strictly capped grouped failure table size per request (`TOP 50` / `LIMIT 50`).
 
 Recommended next optimizations after v1:
 
@@ -136,7 +139,7 @@ Recommended next optimizations after v1:
 2. Add table partitioning by time (monthly/daily depending on ingest volume).
 3. Add retention tiers (raw events short retention, rollups long retention).
 4. Consider background worker status snapshots for instant right-panel load.
-5. Add query-level cache keyed by `(scope hash + timeframe + cursor)` with short TTL (15-30s).
+5. Add query-level cache keyed by `(scope hash + timeframe)` with short TTL (15-30s).
 
 ## Next Steps
 
